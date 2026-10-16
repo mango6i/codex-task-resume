@@ -29,6 +29,8 @@ def observation(now=1000, used=99, reset=1100, status='active', assessment='unkn
             'threads': [{'id': 'task', 'hostId': 'local', 'kind': 'codex',
              'archived': False, 'isSubagent': False, 'status': status,
              'assessment': assessment, 'evidence': 'The requested verification remains unfinished.',
+             'turnId': 'work-turn', 'turnStartedAt': 900, 'turnCompletedAt': 1105,
+             'turnStatus': 'failed', 'stopReason': 'quota_exhausted', 'purpose': 'task',
              **thread_fields}]}
 
 
@@ -47,7 +49,7 @@ class Behavior(unittest.TestCase):
 
     def test_no_early_send_and_real_recovery(self):
         s = self.captured()
-        o = observation(now=1219, used=0, reset=2000, status='idle', assessment='incomplete')
+        o = observation(now=1219, used=0, reset=2000, status='idle', assessment='quota_interrupted')
         self.assertFalse(core.observe(s, o, 1219)['due'])
         o['observedAt'] = 1220
         self.assertEqual(len(core.observe(s, o, 1220)['due']), 1)
@@ -75,7 +77,7 @@ class Behavior(unittest.TestCase):
 
     def test_weekly_exhaustion_and_unknown_usage_fail_closed(self):
         s = self.captured()
-        o = observation(1220, 0, 2000, 'idle', 'incomplete')
+        o = observation(1220, 0, 2000, 'idle', 'quota_interrupted')
         o['usage']['rateLimitsByLimitId']['codex']['secondary']['usedPercent'] = 100
         r = core.observe(s, o, 1220)
         self.assertFalse(r['due'])
@@ -118,12 +120,13 @@ class Behavior(unittest.TestCase):
             def provider():
                 calls.append(1)
                 return observation()['usage']
-            payload = {'hook_event_name': 'PostToolUse', 'session_id': 'task'}
+            payload = {'hook_event_name': 'UserPromptSubmit', 'session_id': 'task',
+                       'turn_id': 'work-turn', 'prompt': 'Finish the requested feature'}
             result = hook.handle(path, payload, provider, 1000)
             self.assertIn('hookSpecificOutput', result)
-            self.assertIsNone(hook.handle(path, payload, provider, 1001))
+            self.assertIsNone(hook.handle(path, {**payload, 'hook_event_name': 'PostToolUse'}, provider, 1001))
             self.assertEqual(len(calls), 1)
-            hook.handle(path, {'hook_event_name': 'Interrupt', 'session_id': 'task'}, provider, 1002)
+            hook.handle(path, {'hook_event_name': 'Interrupt', 'session_id': 'task', 'turn_id': 'work-turn'}, provider, 1002)
             self.assertEqual(next(iter(core.load(path)['queue'].values()))['status'], 'user_paused')
             s = core.load(path)
             s['enabled'] = False
@@ -137,7 +140,7 @@ class Behavior(unittest.TestCase):
             s = self.captured()
             core.atomic_write(path, s)
             obs = Path(td)/'obs.json'
-            core.atomic_write(obs, observation(1220, 0, 2000, 'idle', 'incomplete'))
+            core.atomic_write(obs, observation(1220, 0, 2000, 'idle', 'quota_interrupted'))
             key = next(iter(s['queue'].values()))['windowKey']
             cmd = [sys.executable, str(SCRIPTS/'state.py'), '--state', str(path), '--now', '1220',
                    'reserve', '--thread', 'task', '--window', key, '--input', str(obs)]

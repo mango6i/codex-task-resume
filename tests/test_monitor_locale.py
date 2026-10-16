@@ -23,7 +23,7 @@ class ConnectedMonitor(unittest.TestCase):
         self.path = Path(self.temp.name)/'state.json'
         import subprocess
         result = subprocess.run([sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'),
-            '--state', str(self.path), 'init', '--account', 'a', '--controller', 'controller', '--authorized'],
+            '--state', str(self.path), '--now', '900', 'init', '--account', 'a', '--controller', 'controller', '--authorized'],
             capture_output=True, encoding='utf-8')
         self.assertEqual(result.returncode, 0, result.stderr)
         state = core.load(self.path)
@@ -33,15 +33,12 @@ class ConnectedMonitor(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_idle_service_captures_selected_targets_without_model_or_task_event(self):
+    def test_idle_service_does_not_capture_selected_idle_targets(self):
         original = preferences.values(self.path)
         monitor.tick(self.path, lambda: usage(used=100), now=1000)
         state = core.load(self.path)
         self.assertEqual(state['runtime'], {})
-        self.assertEqual(len(state['queue']), 1)
-        item = next(iter(state['queue'].values()))
-        self.assertEqual(item['dueAt'], 2000000120)
-        self.assertEqual(item['status'], 'pending')
+        self.assertEqual(len(state['queue']), 0)
         self.assertIsNone(state.get('automationId'))
         self.assertFalse(state.get('sends'))
         self.assertEqual(state['lastProbeSuccessAt'], 1000)

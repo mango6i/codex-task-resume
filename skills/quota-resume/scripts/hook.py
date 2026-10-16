@@ -87,11 +87,27 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         s = core.load(path)
         if not s['enabled']:
             return None
-        if event_name in {'UserPromptSubmit', 'PostToolUse'}:
-            s['runtime'][sid] = {'active': True, 'seenAt': now}
+        turn_id = payload.get('turn_id')
+        previous = s['runtime'].get(sid, {})
+        if event_name == 'UserPromptSubmit':
+            if not isinstance(turn_id, str) or not turn_id:
+                return None
+            prompt = payload.get('prompt', '')
+            setup = isinstance(prompt, str) and 'quota-resume' in prompt.lower()
+            s['runtime'][sid] = {'active': True, 'seenAt': now, 'startedAt': now,
+                                 'turnId': turn_id, 'purpose': 'plugin_setup' if setup else 'task'}
+            for item in s['queue'].values():
+                if item['threadId'] == sid and item['status'] == 'pending' and item.get('turnId') != turn_id:
+                    item.update(status='excluded', exclusionReason='superseded_turn')
+        elif event_name == 'PostToolUse':
+            # Async callbacks cannot resurrect a stopped or superseded turn.
+            if not turn_id or previous.get('turnId') != turn_id or not previous.get('active'):
+                return None
+            previous['seenAt'] = now
         elif event_name in {'Stop', 'Interrupt', 'SessionEnd'}:
-            # Stop means a turn ended; native later assessment decides task completion.
-            s['runtime'][sid] = {'active': False, 'seenAt': now}
+            if event_name != 'SessionEnd' and (not turn_id or previous.get('turnId') != turn_id):
+                return None
+            s['runtime'][sid] = {**previous, 'active': False, 'seenAt': now}
             if event_name == 'Interrupt':
                 for item in s['queue'].values():
                     if item['threadId'] == sid and item['status'] == 'pending':
@@ -133,18 +149,10 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 return {'systemMessage': '任务续接已暂停：登录账号改变，请重新检查配置。'}
             s['lastProbeError'] = None
             s['lastQuota'] = {**q, 'observedAt': now}
+            s['lastLiveUsage'] = usage
             if q['remaining'] < s['settings']['threshold']:
                 # Capture event-observed activity, NOT invented cross-process status.
-                threads = [{'id': tid, 'hostId': 'local', 'kind': 'codex',
-                            'archived': False, 'isSubagent': False, 'status': 'active',
-                            'assessment': 'unknown'}
-                           for tid, rt in s['runtime'].items()
-                           if rt['active'] and now-rt['seenAt'] < 86400]
-                # A Stop event can be the first event to observe quota exhaustion.
-                if event_name == 'Stop':
-                    threads.append({'id': sid, 'hostId': 'local', 'kind': 'codex',
-                        'archived': False, 'isSubagent': False, 'status': 'active',
-                        'assessment': 'unknown'})
+                threads = core.runtime_threads(s, now)
                 core.observe(s, {'observedAt': now, 'usage': usage, 'threads': threads}, now)
                 s['lastProbeError'] = None
                 s['lastProbeSuccessAt'] = now
@@ -158,19 +166,15 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         pending = [i for i in s['queue'].values() if i['status'] == 'pending']
         q = s.get('lastQuota', {})
         # Fresh low-quota cache can capture a task starting within the throttle interval.
-        if (event_name in {'UserPromptSubmit', 'PostToolUse'} and sid != s['controllerId']
-                and (s.get('selection', {}).get('mode') != 'selected'
-                     or sid in s.get('selection', {}).get('threads', {}))
-                and sid not in s['excluded'] and now-q.get('observedAt', 0) <= s['settings']['checkSeconds']
+        if (event_name in {'UserPromptSubmit', 'PostToolUse'}
+                and 0 <= now-q.get('observedAt', 0) <= min(90, s['settings']['checkSeconds'])
                 and q.get('remaining', 100) < s['settings']['threshold']):
-            key = q['key'] + ':' + sid
-            if key not in s['queue']:
-                due = q['reset']+s['settings']['delaySeconds']
-                s['queue'][key] = {'threadId': sid, 'hostId': 'local', 'title': sid,
-                    'windowKey': q['key'], 'resetAt': q['reset'], 'dueAt': due,
-                    'capturedAt': now, 'expiresAt': due+s['settings']['expiryHours']*3600,
-                    'status': 'pending'}
-                pending.append(s['queue'][key])
+            # Reuse the last *live* quota only with the same strict activity gate.
+            fresh = s.get('lastLiveUsage')
+            if fresh:
+                core.observe(s, {'observedAt': now, 'usage': fresh,
+                                 'threads': core.runtime_threads(s, now)}, now)
+                pending = [i for i in s['queue'].values() if i['status'] == 'pending']
         if event_name in {'SessionEnd', 'Interrupt'} or not pending or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
             core.atomic_write(path, s)
             return None

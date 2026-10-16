@@ -127,7 +127,7 @@ def quota(usage, limit_id):
         raise ValueError('An unambiguous five-hour quota window is required')
     w = short[0]
     return {'accountId': account, 'remaining': max(0, 100-w['used']),
-            'reset': w['reset'], 'key': f'{limit_id}:{w["reset"]:g}',
+            'reset': w['reset'], 'key': f'{limit_id}:{w["reset"]:.6f}'.rstrip('0').rstrip('.'),
             'allowed': usage.get('ordinaryUsageAllowed') is True
                        and not bucket.get('spendControlReached', False)
                        and all(x['used'] < 100 for x in windows),
@@ -168,9 +168,31 @@ def eligible(s, t):
 def canonical_quota(s, q):
     # The server can round the same reset timestamp by a second across reads.
     previous = s.get('lastQuota', {})
-    if previous.get('key') and abs(previous.get('reset', 0)-q['reset']) <= 60:
+    if previous.get('key') and 'e+' not in previous['key'] and abs(previous.get('reset', 0)-q['reset']) <= 60:
         q['key'] = previous['key']
     return q
+
+
+def runtime_threads(s, now):
+    """Only fresh, identified work turns; selection alone proves no activity."""
+    return [{'id': tid, 'hostId': 'local', 'kind': 'codex', 'archived': False,
+             'isSubagent': False, 'status': 'active', 'assessment': 'unknown',
+             'turnId': rt['turnId'], 'turnStartedAt': rt['startedAt'], 'purpose': 'task'}
+            for tid, rt in s.get('runtime', {}).items()
+            if rt.get('active') and rt.get('purpose') == 'task' and rt.get('turnId')
+            and isinstance(rt.get('startedAt'), (int, float))
+            and 0 <= now-rt.get('seenAt', 0) <= 90]
+
+
+def start_monitoring(s, now):
+    """A new activation cannot replay work captured before it was enabled."""
+    s['monitoringStartedAt'] = now
+    s['runtime'] = {}
+    s['scheduledFor'] = None
+    s['armLeaseUntil'] = s['nextArmAfter'] = 0
+    for item in s['queue'].values():
+        if item['status'] == 'pending':
+            item.update(status='excluded', exclusionReason='previous_activation')
 
 
 def expire(s, now):
@@ -196,49 +218,53 @@ def observe(s, obs, now):
     settings = s['settings']
     s['lastQuota'] = {**q, 'observedAt': now}
     changes = expire(s, now)
-    if q['remaining'] < settings['threshold']:
-        for identifier, target in s.get('selection', {}).get('threads', {}).items():
-            if identifier == s['controllerId'] or identifier in s['excluded']:
-                continue
-            key = q['key'] + ':' + identifier
-            previous = s['queue'].get(key)
-            if previous is None or (previous['status'] == 'excluded'
-                    and previous.get('exclusionReason') == 'selection_removed' and not previous.get('token')):
-                due_at = q['reset'] + settings['delaySeconds']
-                s['queue'][key] = {'threadId': identifier, 'hostId': 'local',
-                    'title': target.get('title', identifier), 'windowKey': q['key'],
-                    'resetAt': q['reset'], 'dueAt': due_at, 'capturedAt': now,
-                    'expiresAt': due_at + settings['expiryHours']*3600,
-                    'status': 'pending', 'captureSource': 'manual'}
-                changes.append({'threadId': identifier, 'status': 'captured'})
+    if q['remaining'] < settings['threshold'] and now < q['reset']:
         for t in threads.values():
             if not eligible(s, t) or t.get('status') != 'active':
                 continue
+            started = t.get('turnStartedAt')
+            if (t.get('purpose') != 'task' or not isinstance(t.get('turnId'), str) or not t['turnId']
+                    or isinstance(started, bool) or not isinstance(started, (int, float))
+                    or not 0 < started <= now+5):
+                continue
             if t.get('assessment') in {'completed', 'user_paused', 'awaiting_input'}:
                 continue
-            key = q['key'] + ':' + t['id']
+            key = q['key'] + ':' + t['id'] + ':' + t['turnId']
             if key not in s['queue']:
                 due = q['reset'] + settings['delaySeconds']
                 s['queue'][key] = {'threadId': t['id'], 'hostId': 'local',
                     'title': t.get('title', t['id']), 'windowKey': q['key'],
                     'resetAt': q['reset'], 'dueAt': due, 'capturedAt': now,
                     'expiresAt': due + settings['expiryHours']*3600,
-                    'status': 'pending'}
+                    'status': 'pending', 'capturePolicy': 2, 'captureSource': 'observed_running',
+                    'turnId': t['turnId'], 'turnStartedAt': started}
                 changes.append({'threadId': t['id'], 'status': 'captured'})
     due = []
     for key, item in s['queue'].items():
         if item['status'] != 'pending':
+            continue
+        if item.get('capturePolicy') != 2 or not item.get('turnId'):
+            item.update(status='excluded', exclusionReason='unbound_legacy_candidate')
+            changes.append({'threadId': item['threadId'], 'status': 'excluded'})
             continue
         t = threads.get(item['threadId'])
         if item['threadId'] in s['excluded']:
             item['status'] = 'excluded'
         elif t:
             assessment = t.get('assessment', 'unknown')
+            if t.get('turnId') and t['turnId'] != item['turnId']:
+                item.update(status='excluded', exclusionReason='superseded_turn')
+                changes.append({'threadId': item['threadId'], 'status': 'excluded'})
+                continue
             if assessment in {'completed', 'user_paused', 'awaiting_input'}:
                 item['status'] = assessment
                 changes.append({'threadId': item['threadId'], 'status': assessment})
             elif (eligible(s, t) and t.get('status') in {'idle', 'notLoaded', 'systemError'}
-                  and assessment in {'incomplete', 'quota_interrupted'}
+                  and assessment == 'quota_interrupted' and t.get('purpose') == 'task'
+                  and t.get('turnId') == item['turnId'] and t.get('turnStatus') == 'failed'
+                  and t.get('stopReason') == 'quota_exhausted'
+                  and isinstance(t.get('turnCompletedAt'), (int, float))
+                  and item['capturedAt']-5 <= t['turnCompletedAt'] <= min(now+5, item['resetAt']+120)
                   and isinstance(t.get('evidence'), str) and t['evidence'].strip()
                   and now >= item['dueAt'] and q['reset'] > item['resetAt'] + 60
                   and q['allowed'] and q['remaining'] >= settings['threshold']):
@@ -348,6 +374,8 @@ def main():
                         item['dueAt'] = item['resetAt'] + cfg['delaySeconds']
                         item['expiresAt'] = item['dueAt'] + cfg['expiryHours'] * 3600
             s['enabled'] = previous_enabled if args.preserve_enabled_state else True
+            if s['enabled'] and not previous_enabled:
+                start_monitoring(s, now)
             if s['enabled'] and not args.preserve_enabled_state:
                 s['authorization'] = {'at': now, 'scope': 'local active root codex chats at threshold',
                                       'messageConfiguredByUser': True}

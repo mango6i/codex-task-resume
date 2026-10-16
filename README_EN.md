@@ -20,7 +20,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
 - **Clear status:** distinguish saved targets, candidates, recent checks, task events and schedule records.
-- **Pre-send checks:** require recovered quota, an elapsed delay and clear evidence of stopped unfinished work. Uncertain sends are not retried automatically.
+- **Pre-send checks:** require recovered quota, an elapsed delay and an explicit quota failure of the exact captured work turn. Historical failures, setup requests and uncertain sends are never replayed.
 
 ## Screenshots
 
@@ -70,6 +70,8 @@ Alternatively, attach the ZIP to a local Codex / ChatGPT Work chat with file acc
 
 Settings and targets are managed globally. Each target chat does not need separate initialization.
 
+An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Keep the client and device running. The plugin service performs read-only checks and cannot independently create native schedules or send messages; initial scheduling and later re-arming still require native assistant capabilities.
+
 ## Settings
 
 | Setting | Default | Meaning |
@@ -90,7 +92,7 @@ Chat titles, project paths, saved prompts and newlines remain unchanged.
 
 ## FAQ
 
-**Why are there zero candidates after selecting chats?** Selection defines the allowed scope. Candidates are captured only at low quota. A saved selection and an established schedule are separate states.
+**Why are there zero candidates after selecting chats?** Selection only limits the allowed scope and never enqueues or starts chats. Capture requires an identified work turn actually observed running at low quota in this window. A saved selection and an established schedule are separate states.
 
 **Does “Turn ended” mean the task is complete?** It describes the latest task event only. Native status and context are checked before sending. Completed, active, paused, blocked, archived and ambiguous tasks are skipped.
 

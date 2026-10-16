@@ -74,7 +74,10 @@ def update(state_path, patch, now=None):
                 s['armLeaseUntil'] = 0
                 s['nextArmAfter'] = 0
             if 'monitoringEnabled' in patch:
+                was_enabled = s['enabled']
                 s['enabled'] = patch['monitoringEnabled']
+                if s['enabled'] and not was_enabled:
+                    core.start_monitoring(s, now)
                 if s['enabled']:
                     s['authorization'] = {'at': now, 'scope': 'local active root codex chats at threshold',
                         'messageConfiguredByUser': True, 'source': 'explicit settings switch'}

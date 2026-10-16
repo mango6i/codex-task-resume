@@ -32,11 +32,9 @@ def tick(path, usage_provider=hook.read_usage, now=None):
                 return
             state['probeLeaseUntil'] = 0
             if state['enabled']:
-                threads = [{'id': tid, 'hostId': 'local', 'kind': 'codex', 'archived': False,
-                            'isSubagent': False, 'status': 'active', 'assessment': 'unknown'}
-                           for tid, rt in state.get('runtime', {}).items()
-                           if rt.get('active') and now-rt.get('seenAt', 0) < 300]
+                threads = core.runtime_threads(state, now)
                 core.observe(state, {'observedAt': now, 'usage': usage, 'threads': threads}, now)
+                state['lastLiveUsage'] = usage
                 state['lastProbeError'] = None
                 state['lastProbeSuccessAt'] = now
                 state['lastProbeSource'] = 'connected_service'

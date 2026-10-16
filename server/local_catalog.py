@@ -217,8 +217,7 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
                     or item.get('captureSource') == 'manual' and item['threadId'] in old['threads'] and item['threadId'] not in targets):
                 item['status'] = 'excluded'
                 item['exclusionReason'] = 'selection_removed'
-        # Manual selection can capture an already-stopped task at exhausted quota.
-        # It never authorizes a send or bypasses the later native status check.
+        # Saving an allowlist never creates work. Only observed running turns qualify.
         core.observe(state, {'observedAt': now, 'usage': usage, 'threads': []}, now)
         core.event(state, now, 'selection_saved', count=len(targets), mode=mode)
         core.atomic_write(path, state)

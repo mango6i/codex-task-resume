@@ -46,7 +46,7 @@ class Catalog(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name)/'state.json'
         result = subprocess.run([sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'),
-            '--state', str(self.path), 'init', '--account', 'a', '--controller', 'controller', '--authorized'],
+            '--state', str(self.path), '--now', '900', 'init', '--account', 'a', '--controller', 'controller', '--authorized'],
             capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         FakeReader.calls = []
@@ -65,27 +65,29 @@ class Catalog(unittest.TestCase):
         self.assertTrue(result['monitor']['modelFreeRead'])
         self.assertEqual([m for m, _ in FakeReader.calls], ['account/rateLimits/read', 'thread/list'])
 
-    def test_manual_selection_captures_stopped_target_without_sending_or_creating_schedule(self):
+    def test_manual_selection_is_only_scope_and_never_captures_idle_targets(self):
         result = catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1000)
         state = core.load(self.path)
         self.assertTrue(state['enabled'])
-        self.assertEqual(result['pendingCount'], 1)
+        self.assertEqual(result['pendingCount'], 0)
         self.assertFalse(result['sent'])
         self.assertFalse(result['scheduled'])
-        item = next(iter(state['queue'].values()))
-        self.assertEqual(item['captureSource'], 'manual')
-        self.assertEqual(item['dueAt'], 2000000120)
+        self.assertEqual(state['queue'], {})
         self.assertTrue(all(m in {'account/rateLimits/read', 'thread/read'} for m, _ in FakeReader.calls))
         catalog.update_selection(self.path, 'selected', [], FakeReader, now=1001)
-        self.assertEqual(next(iter(core.load(self.path)['queue'].values()))['status'], 'excluded')
+        self.assertEqual(core.load(self.path)['queue'], {})
         catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1002)
-        self.assertEqual(next(iter(core.load(self.path)['queue'].values()))['status'], 'pending')
+        self.assertEqual(core.load(self.path)['queue'], {})
 
     def test_selected_scope_blocks_automatic_capture_and_preserves_completion_checks(self):
         catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1000)
         state = core.load(self.path)
         obs = {'observedAt': 1001, 'usage': usage(), 'threads': [{'id': 'unselected', 'hostId': 'local',
-            'kind': 'codex', 'archived': False, 'isSubagent': False, 'status': 'active'}]}
+            'kind': 'codex', 'archived': False, 'isSubagent': False, 'status': 'active',
+            'turnId': 'work-turn', 'turnStartedAt': 950, 'purpose': 'task'}]}
+        core.observe(state, obs, 1001)
+        self.assertEqual(len(state['queue']), 0)
+        obs['threads'][0]['id'] = 'task-a'
         core.observe(state, obs, 1001)
         self.assertEqual(len(state['queue']), 1)
         obs['threads'] = [{'id': 'task-a', 'hostId': 'local', 'kind': 'codex', 'archived': False,

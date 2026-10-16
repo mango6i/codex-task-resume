@@ -52,12 +52,18 @@ The helper's `--now` option is exclusively for tests; omit in actual use. Option
     "isSubagent": false,
     "status": "idle",
     "assessment": "quota_interrupted",
+    "turnId": "same-captured-work-turn-id",
+    "turnStartedAt": 1792043900,
+    "turnCompletedAt": 1792062700,
+    "turnStatus": "failed",
+    "purpose": "task",
+    "stopReason": "quota_exhausted",
     "evidence": "The latest turn was stopped by quota while requested verification remained unfinished."
   }]
 }
 ```
 
-Require explicit local identity and exclusion flags. Native status accepts `active`, `idle`, `notLoaded`, `systemError`, and `needsAttention`; only idle/notLoaded/systemError can dispatch, with affirmative unfinished-task evidence. Unknown status, missing chat, or ambiguous task completion defers. Archived/subagent/source fields cannot be guessed local.
+Require explicit local identity and exclusion flags. Capturing an active turn requires turnId, turnStartedAt and purpose=task. Selection never captures inactive chats. For dispatch, latestTurn.id must exactly match the captured turnId and that turn must have failed specifically from quota exhaustion within the captured quota window. Include the real completedAt; old failures and plugin setup requests never qualify. Native status accepts active, idle, notLoaded, systemError and needsAttention; only idle/notLoaded/systemError can dispatch. Unknown status, missing identity or ambiguous evidence defers. Archived/subagent/source fields cannot be guessed local.
 
 Snapshot freshness: 90 seconds maximum, 5 seconds future tolerance. Refresh before each reserve. The five-hour window may be primary or secondary; select by duration=300 and configured bucket. Missing/malformed quota fails closed. A reset timestamp must advance by more than 60 seconds before recovery; tiny backend rounding changes are not reset events. A fresh valid snapshot, elapsed due time, available quota, and task evidence are all required.
 

@@ -132,11 +132,11 @@ html,body{height:100%;overflow:hidden}
 </div>
 <div id="panel-tasks" role="tabpanel" aria-labelledby="tab-tasks" hidden>
  <div class="page help-page">
-  <div class="help-intro"><div class="eyebrow">ONE PLACE · ALL LOCAL TASKS</div><h1>统一管理续接对话</h1><p>设置只需保存一次。自动记录运行任务，也可以手动补选已经因额度停止的对话。</p></div>
+  <div class="help-intro"><div class="eyebrow">ONE PLACE · ALL LOCAL TASKS</div><h1>统一管理续接对话</h1><p>设置只需保存一次。勾选仅限制监控范围；只有本轮低额度时实际运行的任务才会记录。</p></div>
   <div class="tasks-layout"><aside class="task-sidebar" aria-label="检测状态与续接范围">
-  <section class="card"><div class="section-head"><span class="number">01</span><h2>当前检测与排程</h2><span class="task-phase" id="task-phase">尚未读取</span></div><div id="task-monitor" class="monitor-metrics">点击刷新，读取本地对话、额度和排程记录。</div><p class="hint" id="task-monitor-detail">勾选保存范围；低额度时才记录候选。记录候选后，还需成功建立恢复排程。</p></section>
+  <section class="card"><div class="section-head"><span class="number">01</span><h2>当前检测与排程</h2><span class="task-phase" id="task-phase">尚未读取</span></div><div id="task-monitor" class="monitor-metrics">点击刷新，读取本地对话、额度和排程记录。</div><p class="hint" id="task-monitor-detail">勾选不会启动对话。候选必须绑定本轮实际运行的任务；记录后还需有效恢复排程。</p></section>
   <section class="card"><div class="section-head"><span class="number">02</span><h2>选择续接范围</h2><span class="meta">全局生效</span></div>
-   <label class="scope-option"><input type="radio" name="task-mode" value="automatic" checked>自动记录运行任务，并加入手动勾选的对话</label>
+   <label class="scope-option"><input type="radio" name="task-mode" value="automatic" checked>自动监控本机运行中的任务</label>
    <label class="scope-option"><input type="radio" name="task-mode" value="selected">只处理我勾选的对话</label>
   </section>
   <section class="scope-banner"><svg class="ico" aria-hidden="true"><use href="#info"/></svg><p><strong>排程限制</strong> · 当前版本仍通过原生定时任务执行恢复检查。如果额度在排程建立前耗尽，任务可以被记录，但无法保证自动唤醒。界面会显示未安排，不能把保存选择当成设置完成。</p></section>
@@ -146,7 +146,7 @@ html,body{height:100%;overflow:hidden}
    <div class="task-bulk"><button type="button" class="text-action" id="task-select-all">全选当前列表</button><button type="button" class="text-action" id="task-clear">清空选择</button><small>仅选择当前已加载、匹配搜索且可选的对话；点击保存后生效。</small></div>
    <div id="task-list" class="task-list" aria-label="本地续接目标"></div>
    <div class="task-toolbar"><button type="button" class="text-action" id="task-more" hidden>加载更多</button><span class="hint" id="task-count">尚未读取</span></div>
-   <p class="hint">列表显示最近一次任务事件及时间：“回合已结束”不等于任务已完成，也不是实时运行状态。勾选仅授权加入候选；发送前仍须原生状态与上下文复查。</p>
+   <p class="hint">列表显示最近一次任务事件及时间：“回合已结束”不等于任务已完成，也不是实时运行状态。勾选仅限定范围，不直接入队；发送前必须核对同一轮任务确因本次额度耗尽停止。</p>
   </section>
   </div>
  </div>
@@ -159,10 +159,10 @@ html,body{height:100%;overflow:hidden}
   <div class="steps">
    <article class="step"><div class="step-title"><span class="step-index">1</span>安装或更新插件</div><p>解压安装包，完全退出客户端，运行包内的 <strong>install.cmd</strong>，看到安装成功后重新打开客户端。你也可以把 ZIP 附给能够访问本机文件的本地 Codex / ChatGPT Work，让助手按包内说明安装。</p><div class="command"><code id="command-install">请帮我把提供的 Codex 任务续接安装包安装到当前本地客户端。先阅读包内安装说明并检查依赖，再运行包内安装器，保留已有设置。安装后核对插件和管理入口；需要重启或审核脚本时告诉我。暂不开启自动续接。</code><button type="button" data-copy="command-install"><svg class="ico" aria-hidden="true"><use href="#copy"/></svg>复制安装提示词</button></div></article>
    <article class="step"><div class="step-title"><span class="step-index">2</span>直接点击管理入口</div><p>在插件详情页的“设置 → 统一管理”点击<strong>管理 Codex 任务续接</strong>，或从客户端应用入口打开<strong>Codex 任务续接 · 管理</strong>。参数、提示词和对话勾选都在同一个面板保存，不需要逐个对话发送设置指令。下方命令仅作为入口未加载时的诊断备用。</p><div class="command"><code id="command-open">使用 $quota-resume 打开设置弹窗。</code><button type="button" data-copy="command-open"><svg class="ico" aria-hidden="true"><use href="#copy"/></svg>复制备用命令</button></div></article>
-   <article class="step"><div class="step-title"><span class="step-index">3</span>初始化一个控制对话</div><p>选一个保留的本地对话，发送下面的命令。它负责安排恢复检查，本身不会成为续接目标。已有参数会保留，不会因初始化自动开启开关。</p><div class="command"><code id="command-init">使用 $quota-resume 初始化设置，保留我已保存的参数，暂不开启自动续接。</code><button type="button" data-copy="command-init"><svg class="ico" aria-hidden="true"><use href="#copy"/></svg>复制初始化命令</button></div></article>
+   <article class="step"><div class="step-title"><span class="step-index">3</span>初始化一个控制对话</div><p>选一个保留的本地对话初始化一次。它承载后台恢复排程，不需要置于前台或保持面板打开，本身也不会成为续接目标。初始化保留参数且不开启开关。</p><div class="command"><code id="command-init">使用 $quota-resume 初始化设置，保留我已保存的参数，暂不开启自动续接。</code><button type="button" data-copy="command-init"><svg class="ico" aria-hidden="true"><use href="#copy"/></svg>复制初始化命令</button></div></article>
    <article class="step"><div class="step-title"><span class="step-index">4</span>审核脚本，开启并保存</div><p>按客户端的原生提示审核并信任本插件的检测脚本。然后回到“续接设置”，填写参数、打开“开启自动续接”，点击“保存设置”。<strong>开关已开启，不等于脚本已经受信任。</strong></p><p style="margin-top:8px">需要核对初始化、队列或定时检查时，在控制对话说“使用 $quota-resume 查看状态”。</p></article>
   </div>
-  <section class="help-block"><h2>额度恢复时，具体会发生什么</h2><div class="outcomes"><article class="outcome"><h3><svg class="ico" aria-hidden="true"><use href="#check"/></svg>会续接</h3><p>低额度时被记录、等待时间已到、额度确认恢复，并且最近上下文能确定尚未完成的已停止任务。插件把保存的提示词发到对应原对话。</p></article><article class="outcome"><h3><svg class="ico" aria-hidden="true"><use href="#shield"/></svg>会跳过</h3><p>仍运行、已完成、手动暂停、等待输入或批准、归档或状态不明确的任务。发送结果不确定时，不会自动重发。</p></article></div></section>
+  <section class="help-block"><h2>额度恢复时，具体会发生什么</h2><div class="outcomes"><article class="outcome"><h3><svg class="ico" aria-hidden="true"><use href="#check"/></svg>会续接</h3><p>本轮低额度时实际运行并被记录、随后明确因额度耗尽停止的同一轮任务。额度恢复且等待时间已到后，才向原对话发送保存的提示词。</p></article><article class="outcome"><h3><svg class="ico" aria-hidden="true"><use href="#shield"/></svg>会跳过</h3><p>仍运行、已完成、手动暂停、等待输入或批准、归档或状态不明确的任务。发送结果不确定时，不会自动重发。</p></article></div></section>
   <section class="help-block"><h2>常见问题</h2>
    <details><summary>设置“60 秒”，是不是每分钟都自动检查？</summary><p>插件服务连接期间按该间隔只读检查额度，任务事件共用节流。客户端退出、插件服务断开或休眠时停止；仅安装插件不能证明检测服务已连接。</p></details>
    <details><summary>19:13 刷新，设置等 2 分钟，是否一定 19:15 发送？</summary><p>19:15 是目标复查时间。插件还要确认额度已恢复、任务未完成且已停止，才会发送。客户端退出、电脑休眠、额度在安排检查前耗尽或周额度耗尽，都会导致延后或无法续接，不保证精确到某一分钟。</p></details>
@@ -239,7 +239,7 @@ function renderMonitor(data){
  el('task-phase').textContent=taskPhases[phase]||t('状态待核验');el('task-phase').dataset.warning=String(['pending_unscheduled','low_quota','setup_required'].includes(phase));
  el('task-monitor').replaceChildren();
  for(const [label,value] of [[t('剩余额度'),quota.remaining+'%'],[t('刷新时间'),reset],[t('触发阈值'),'< '+monitor.threshold+'%'],[t('已选对话'),monitor.selectedCount??taskSaved.size],[t('待续接'),monitor.pendingCount+t(' 个')],[t('最近成功检测'),monitor.lastCheckedAt?timeText(monitor.lastCheckedAt):t('暂无记录')],[t('检测服务'),t(monitor.serviceConnected?'服务已连接':'尚无服务心跳')],[t('最近任务事件'),monitor.lastEventAt?timeText(monitor.lastEventAt):t('暂无记录')],[t('续接排程'),monitor.scheduledFor?timeText(monitor.scheduledFor):t('尚未排程')]]){const item=document.createElement('div'),caption=document.createElement('small'),number=document.createElement('strong');caption.textContent=label;number.textContent=value;item.append(caption,number);el('task-monitor').append(item);}
- const detail={setup_required:t('先初始化一个全局控制对话；无需在每个目标对话发送设置指令。'),disabled:t('参数和对话选择已保留。监控开关关闭，后续不会自动发送。'),waiting_threshold:t('当前额度尚未低于 ')+monitor.threshold+t('%，暂不入队。已保存的对话会在低额度条件满足后加入候选；目前没有恢复排程。'),low_quota:t('额度已低于阈值，但尚无待续接候选。需确认目标范围与检测脚本；目前没有恢复排程。'),pending_unscheduled:t('已有 ')+monitor.pendingCount+t(' 个候选，尚未安排恢复检查，不能保证到时自动续接。'),schedule_record:t('仅发现已保存的排程记录，尚未核验客户端是否启用；这不等于保证到时自动发送。')};
+ const detail={setup_required:t('先初始化一个全局控制对话；无需在每个目标对话发送设置指令。'),disabled:t('参数和对话选择已保留。监控开关关闭，后续不会自动发送。'),waiting_threshold:t('当前额度尚未低于 ')+monitor.threshold+t('%，暂不入队。只有低额度时实际运行的任务才会记录；勾选的空闲对话不会入队。目前没有恢复排程。'),low_quota:t('额度已低于阈值，但尚无待续接候选。需确认目标范围与检测脚本；目前没有恢复排程。'),pending_unscheduled:t('已有 ')+monitor.pendingCount+t(' 个候选，尚未安排恢复检查，不能保证到时自动续接。'),schedule_record:t('仅发现已保存的排程记录，尚未核验客户端是否启用；这不等于保证到时自动发送。')};
  el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'');
  return taskPhases[phase]||t('状态待核验');
 }
