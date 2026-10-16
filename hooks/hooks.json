@@ -1,0 +1,79 @@
+{
+  "description": "在本地任务事件中只读检查额度；默认未启用。需要用户信任这些 Hook。",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "async": true,
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
+            "timeout": 20,
+            "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

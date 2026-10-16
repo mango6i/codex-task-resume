@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "quota_settings": {
+      "command": "python",
+      "args": [
+        "server/settings_mcp.py"
+      ],
+      "cwd": "."
+    }
+  }
+}

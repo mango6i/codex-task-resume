@@ -1,0 +1,4 @@
+interface:
+  display_name: "额度恢复续接"
+  short_description: "记录五小时额度不足时运行的任务，恢复后检查并续接尚未完成的对话"
+  default_prompt: "使用 $quota-resume 启用本机额度恢复续接。"
