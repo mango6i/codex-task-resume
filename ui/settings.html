@@ -52,6 +52,33 @@ html,body{height:100%;overflow:hidden}
 @media(min-width:1100px){#fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}#fields>.card:first-child{grid-column:auto}#fields .two{grid-template-columns:minmax(0,1fr);gap:14px}#fields .field{display:grid;grid-template-columns:minmax(0,1fr) 128px;column-gap:12px;align-items:center}#fields .field label{margin:0}#fields .field>.hint,#fields .field>.preset-row{grid-column:1/-1}#fields textarea{height:150px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .quota-strip{display:flex;align-items:center;gap:6px 22px;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px}.quota-strip small{display:block;color:var(--muted);font-size:10px}.quota-strip strong{font-size:15px;font-variant-numeric:tabular-nums}.quota-strip .button{margin-left:auto}.quota-strip p{flex-basis:100%;font-size:11px;color:var(--muted);line-height:1.5}.task-bulk{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px}.task-bulk small{font-size:10px;color:var(--muted)}html[lang=en] .brand span{display:none}html[lang=en] .section-head{flex-wrap:wrap}html[lang=en] .project-meta{min-width:0}@media(max-width:480px){.quota-strip{gap:12px}.project-meta{max-width:100%}.project-link{font-size:10px;overflow-wrap:anywhere;min-width:0}.project-link .ico{display:none}.task-bulk small{flex-basis:100%}.quota-strip .button{font-size:10px}}
+
+/* Compact the plugin header; the native host owns its outer page title. */
+.app-header{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border)}
+.app-header .brandbar{padding-top:7px;padding-bottom:5px;gap:10px}
+.app-header .brandmark{width:28px;height:28px;border-radius:8px;flex-shrink:0}
+.app-header .brand{font-size:15px;line-height:1.4;white-space:nowrap}
+.app-header .brand span,.app-header .brand-sub{display:none}
+.app-header .tabs{border-bottom:0;gap:22px}
+.app-header .tab{padding-top:7px;padding-bottom:8px}
+.app-header .project-meta{font-size:11px;gap:9px}
+.app-header .project-link{padding:3px 8px;font-size:11px}
+.app-header .version{padding:2px 7px;font-size:10px}
+.shell .save-feedback{top:calc(var(--header-height,88px) + 8px)}
+@media(min-width:1000px){
+ .app-header{display:flex;align-items:center;gap:10px;padding:4px max(22px,calc((100% - 1320px)/2))}
+ .app-header .brandbar{display:contents}
+ .app-header .tabs{order:1;margin-left:12px;padding:0;flex-shrink:0;gap:22px}
+ .app-header .project-meta{order:2;margin-left:auto}
+ .app-header .version{order:3;margin-left:0}
+ .app-header .tab{padding:9px 1px;font-size:12px}
+}
+@media(max-width:560px){
+ .app-header .brandbar{flex-wrap:wrap;gap:5px 9px}
+ .app-header .project-meta{order:4;flex-basis:100%;margin:0;flex-direction:row;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:5px}
+ .app-header .version{margin-left:auto}
+}
+
 .brandmark{background:transparent;box-shadow:none;overflow:hidden}.brandmark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:9px}.steps{align-items:start}</style>
 </head>
 <body>
@@ -70,12 +97,13 @@ html,body{height:100%;overflow:hidden}
 <symbol id="spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9"/></symbol>
 </defs></svg>
 <main class="shell" id="shell">
-<header class="brandbar">
+<header class="app-header" id="app-header">
+<div class="brandbar">
  <div class="brandmark" aria-hidden="true"><img src="__TASK_RESUME_ICON__" alt="" aria-hidden="true"></div>
  <div><div class="brand">Codex 任务续接<span>QUOTA RESUME</span></div><div class="brand-sub">额度恢复后，继续未完成的任务</div></div>
  <div class="project-meta"><span class="project-author">作者<b>果果</b></span><a class="project-link" id="project-home" href="https://github.com/mango6i/codex-task-resume" target="_blank" rel="noopener noreferrer" aria-label="打开项目主页 mango6i/codex-task-resume">mango6i/codex-task-resume<svg class="ico" aria-hidden="true"><use href="#arrow"/></svg></a></div>
  <span class="version">v1.0</span>
-</header>
+</div>
 <style>
 .scope-option{display:flex;align-items:flex-start;gap:9px;padding:9px 0;font-size:12px;cursor:pointer}.scope-option input{accent-color:var(--accent);margin-top:3px}.task-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.task-toolbar input[type=search]{min-width:0;flex:1;border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--bg);color:inherit;font:inherit}.task-list{margin-top:15px;border:1px solid var(--border);border-radius:12px;overflow:hidden}.task-row{display:flex;align-items:center;gap:12px;padding:15px;cursor:pointer}.task-row+.task-row{border-top:1px solid var(--border)}.task-row>input{accent-color:var(--accent);width:16px;height:16px;flex-shrink:0}.task-row>div{min-width:0;flex:1}.task-row strong{font-size:13px;display:block;overflow-wrap:anywhere}.task-row small{display:block;color:var(--muted);font-size:10px;overflow-wrap:anywhere;margin-top:4px}.task-badge{font-size:10px;white-space:nowrap;color:var(--muted);background:var(--soft);padding:4px 7px;border-radius:6px}#task-monitor,#task-status{font-size:12px;line-height:1.85;color:var(--muted)}@media(max-width:480px){.task-toolbar{flex-wrap:wrap}.task-row{flex-wrap:wrap}.task-badge{margin-left:28px}.task-toolbar input[type=search]{flex-basis:100%}}
 </style>
@@ -84,6 +112,7 @@ html,body{height:100%;overflow:hidden}
  <button type="button" class="tab" id="tab-tasks" role="tab" aria-selected="false" aria-controls="panel-tasks" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#capture"/></svg>对话管理</button>
  <button type="button" class="tab" id="tab-help" role="tab" aria-selected="false" aria-controls="panel-help" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#book"/></svg>使用说明</button>
 </nav>
+</header>
 <div id="panel-settings" role="tabpanel" aria-labelledby="tab-settings">
  <div class="page">
   <div class="intro"><div><div class="eyebrow">YOUR CONTINUATION RULE</div><h1>设置你的续接方式</h1><p>额度恢复后，按你保存的提示词接着处理未完成任务。</p></div><span class="saved-pill" id="saved-pill"><span class="dot"></span><span id="save-state">正在读取</span></span></div>
@@ -325,6 +354,7 @@ async function connect(){
 el('retry').addEventListener('click',()=>initialized?load():connect());
 connect();
 new ResizeObserver(()=>notify('ui/notifications/size-changed',{height:Math.ceil(el('shell').getBoundingClientRect().height)})).observe(el('shell'));
+new ResizeObserver(()=>el('shell').style.setProperty('--header-height',el('app-header').getBoundingClientRect().height+'px')).observe(el('app-header'));
 })();
 </script>
 </body></html>

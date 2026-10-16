@@ -14,8 +14,8 @@ import monitor
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
-EDITOR_URI = 'ui://task-resume/settings-studio-20261016-bilingual.html'
-LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261016-bilingual.html'
+EDITOR_URI = 'ui://task-resume/settings-studio-20261016-compact-header.html'
+LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261016-compact-header.html'
 UI_FILES = {EDITOR_URI: 'settings.html', LAUNCHER_URI: 'launcher.html'}
 PROPERTIES = {
     'threshold': {'type': 'number', 'title': '剩余额度低于（%）', 'minimum': 0.01, 'maximum': 99,
@@ -135,11 +135,12 @@ def dispatch_raw(method, params, path):
             raise ValueError('Resource not found')
         return {'contents': [{'uri': uri, 'mimeType': 'text/html;profile=mcp-app',
             'text': i18n.render(UI_FILES[uri]),
-            '_meta': {'ui': {'csp': {'connectDomains': [], 'resourceDomains': []}},
+            '_meta': {'ui': {'prefersBorder': uri != EDITOR_URI,
+                            'csp': {'connectDomains': [], 'resourceDomains': []}},
                       'openai/ui': {'availableDisplayModes': ['inline', 'fullscreen'],
                                     'preferredDisplayMode': 'inline'},
                       'openai/widgetDescription': 'Codex 任务续接的客户端内设置表单。',
-                      'openai/widgetPrefersBorder': True,
+                      'openai/widgetPrefersBorder': uri != EDITOR_URI,
                       'openai/widgetCSP': {'connect_domains': [], 'resource_domains': [],
                                            'redirect_domains': ['https://github.com']}}}]}
     if method == 'tools/call':
