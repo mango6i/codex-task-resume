@@ -1,27 +1,34 @@
 # Codex 任务续接 1.0 · 预览版
 
-适用于 Windows 本机的本地 Codex / ChatGPT Work 对话。作者：果果。
+Windows 本地 Codex / ChatGPT Work 的任务续接管理插件。
 
-## 本版提供
+## 功能
 
-- 原生插件设置与固定管理入口，统一管理参数及目标对话。
-- 自定义五小时剩余额度阈值、刷新后等待时间及多行续接提示词。
-- 按任务事件只读检测额度，保存运行任务与手动勾选目标。
-- 宽屏三栏设置 / 左右分栏对话管理，小窗口滚动和固定保存按钮。
-- 明确的保存成功提示、候选及排程状态、防重复发送记录。
+- 自定义额度阈值、刷新后等待时长和多行续接提示词。
+- 服务连接期间只读检测额度，显示实际刷新时间和最近检测状态。
+- 本地对话搜索、勾选、全选当前列表和清空选择。
+- 跟随系统显示中英文，支持浅色、深色及不同窗口大小。
 
-## 下载与安装
+## 安装
 
-下载本页附件 `codex-task-resume-1.0.zip` 和 `SHA256SUMS.txt`。解压后确认已有 Python 3.10+、Codex CLI，完全退出客户端，运行 `install.cmd`，成功后重新打开客户端。
+下载 `codex-task-resume-1.0.zip` 与 `SHA256SUMS.txt`。确认已有 Python 3.10+ 和 Codex CLI，解压后完全退出客户端，运行 `install.cmd`，成功后重开客户端。也可以使用包内的本地助手安装提示词。已有设置与运行记录保留。
 
-这个安装包使用本地安装器，不适用于“创建插件”的 ZIP 上传入口。首次使用需初始化一个全局控制对话并完成客户端原生 Hook 信任审核，再显式开启监控。
+[中文使用说明](https://github.com/mango6i/codex-task-resume/blob/main/README.md) · [English](https://github.com/mango6i/codex-task-resume/blob/main/README_EN.md)
 
-GitHub 自动生成的 Source code ZIP 是源码快照；普通用户请使用发行附件。
+![续接设置](https://raw.githubusercontent.com/mango6i/codex-task-resume/main/assets/settings-light.png)
 
-## 当前限制
+## 使用限制
 
-恢复排程目前仍需模型回合建立。如果额度在排程成功建立前已经耗尽，本版不能保证自行在刷新后唤醒。真实额度耗尽、刷新、唤醒与发送完整周期仍未完成验收。
+恢复检查需要提前建立原生排程。若额度已耗尽且尚未成功排程，无法保证自动唤醒；后续额度周期仍需正确重新排程。完整的额度耗尽、刷新、唤醒与发送周期尚未验证。
 
-保存参数、勾选范围、开启开关、记录候选、保存排程记录和客户端实际启用排程是不同状态。只读检测不调用模型，建立排程、恢复检查及后续任务执行会使用正常额度。
+只读检测不调用模型，建立排程、恢复检查和任务执行使用正常额度。客户端、插件服务及设备需要保持可用。
 
-版本显示固定为 1.0，清单版本 1.0.0。内部插件身份与数据目录保留兼容名称，升级保留已有参数、勾选范围、队列与发送记录。
+## English
+
+Local Codex / ChatGPT Work task continuation management for Windows. Includes configurable thresholds, reset delays, exact multiline prompts, local target selection and an automatic Chinese/English UI.
+
+Download the release ZIP and checksum file, then use the bundled installer or local-assistant installation prompt. Existing user data is preserved.
+
+A native recovery schedule must be established in advance. Automatic wake is not guaranteed without it; later quota windows require correct rescheduling. A complete real exhaustion, reset, wake and send cycle remains unverified. Read-only checks do not call the model; scheduling, recovery and continued work use normal quota.
+
+版本 / Version: 1.0 · 作者 / Author: 果果 · MIT
