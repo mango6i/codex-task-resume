@@ -44,7 +44,9 @@ class Settings(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td)/'state.json'
             message = '  继续任务\n请保持原始范围。  '
-            preferences.update(path, {'threshold': 7, 'delayMinutes': 1.5, 'message': message})
+            announcement = '  项目检查\n保留我的原文。  '
+            preferences.update(path, {'threshold': 7, 'delayMinutes': 1.5, 'message': message,
+                                      'announcementMessage': announcement, 'announcementCheckMinutes': 3})
             self.assertFalse(path.exists())
             cmd = [sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'), '--state', str(path),
                 'init', '--account', 'a', '--controller', 'controller', '--authorized', '--preserve-enabled-state']
@@ -55,6 +57,9 @@ class Settings(unittest.TestCase):
             self.assertEqual(s['settings']['threshold'], 7)
             self.assertEqual(s['settings']['delaySeconds'], 90)
             self.assertEqual(s['settings']['message'], message)
+            self.assertEqual(s['settings']['announcementMessage'], announcement)
+            self.assertEqual(s['settings']['announcementCheckMinutes'], 3)
+            self.assertFalse(s['settings'].get('announcementEnabled', False))
             self.assertNotIn('authorization', s)
             preferences.update(path, {'message': '另一个内容'})
             self.assertFalse(core.load(path)['enabled'])

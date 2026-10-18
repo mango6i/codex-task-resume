@@ -155,7 +155,7 @@ class Catalog(unittest.TestCase):
         self.assertEqual(tools['settings.editor']['title'], '管理 Codex 任务续接')
         self.assertEqual(list(core.load(self.path)['queue']), [])
         resource = settings_mcp.dispatch('resources/read', {'uri': settings_mcp.EDITOR_URI}, self.path)['contents'][0]
-        self.assertEqual(resource['_meta']['openai/widgetCSP']['redirect_domains'], ['https://github.com'])
+        self.assertEqual(resource['_meta']['openai/widgetCSP']['redirect_domains'], ['https://github.com', 'https://x.com'])
         self.assertEqual(resource['_meta']['ui']['csp']['connectDomains'], [])
 
 

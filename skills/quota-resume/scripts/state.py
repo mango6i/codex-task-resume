@@ -212,6 +212,7 @@ def observe(s, obs, now):
     q = canonical_quota(s, q)
     if q['accountId'] != s['accountId']:
         s['enabled'] = False
+        s['settings']['announcementEnabled'] = False
         event(s, now, 'account_changed')
         return {'enabled': False, 'due': [], 'scheduleMode': 'disabled',
                 'nextWakeAt': None, 'reason': 'account_changed'}
@@ -345,7 +346,8 @@ def main():
                 if not isinstance(saved, dict):
                     raise ValueError('Invalid saved preferences')
                 cfg.update({k: v for k, v in saved.items() if k in {
-                    'threshold', 'delaySeconds', 'checkSeconds', 'expiryHours', 'message', 'limitId'}})
+                    'threshold', 'delaySeconds', 'checkSeconds', 'expiryHours', 'message', 'limitId',
+                    'announcementMessage', 'announcementCheckMinutes'}})
             defaults = {'threshold': 2, 'delaySeconds': 120, 'checkSeconds': 60,
                         'expiryHours': 72, 'message': '继续任务', 'limitId': args.limit_id}
             for key, value in defaults.items():
@@ -392,6 +394,10 @@ def main():
                 result = s
             elif args.command == 'disable':
                 s['enabled'] = False
+                if s['settings'].get('announcementEnabled'):
+                    import announcements
+                    s['settings']['announcementEnabled'] = False
+                    announcements.activate(s, False, now)
                 event(s, now, 'disabled')
                 result = {'enabled': False, 'automationId': s.get('automationId')}
             elif args.command == 'set-automation':

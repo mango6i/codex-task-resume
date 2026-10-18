@@ -22,6 +22,27 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 - **Clear status:** distinguish saved targets, candidates, recent checks, task events and schedule records.
 - **Pre-send checks:** require recovered quota, an elapsed delay and an explicit quota failure of the exact captured work turn. Historical failures, setup requests and uncertain sends are never replayed.
 
+## Tibo reset announcements and full-reset stops
+
+An optional, independent workflow reads [@thsottiaux](https://x.com/thsottiaux). A new original post containing the standalone keyword `reset` (case insensitive) requests a project review in all eligible local root chats. This scope is independent of the continuation allowlist. Historical posts, reposts and quoted text do not trigger a review; each post is sent at most once per chat.
+
+- **Custom instruction:** the default is `请帮我全量检查此项目是否还有可以优化的地方，隐藏的问题，修复好`. Whitespace and newlines are preserved.
+- **Model:** GPT-6 Astra, Extra high (`gpt-6-astra` / `xhigh`). No substitute is selected if unavailable.
+- **Running chats:** deferred; waiting-for-input/approval, paused, archived, remote and subagent chats are excluded. Completed projects can receive a new review.
+- **Full quota reset:** when live five-hour and weekly usage transition to 100% remaining with reset timestamps advancing, stop all running eligible local project turns and cancel unsent reviews and old continuation candidates. The controller is excluded. Initial login with full quota does not trigger a stop. Already consumed quota cannot be refunded.
+- **Confirmation:** interruption must be verified as `interrupted`. Ambiguous sends or stops are never retried automatically; an unresolved stop blocks further review starts. To clear an unresolved stop, verify the tasks manually, then disable and re-enable the feature.
+
+**Compatibility:** this workflow requires an existing, verifiable native desktop control daemon and the requested model. The plugin checks both on each computer. It only connects through `codex app-server proxy`; it never starts a replacement server or enables remote control. If the installed client does not expose that channel, activation is blocked and the reason is displayed. This is not available on every current desktop build. Detection alone is not successful automation.
+
+The connected plugin service checks the public profile every 5 minutes by default. Quota and stop checks use the saved quota interval (60 seconds by default). Detection and interruption have polling and network latency; exact-second execution is not guaranteed. The client and device must remain running. Read-only checks use no model inference. Review turns consume the account's ordinary quota.
+
+### Enable the workflow
+
+1. Initialize one controller on this computer and trust the hooks as described below.
+2. Click **Check announcements & compatibility**. This action does not send messages or interrupt tasks.
+3. Set the review instruction and announcement interval.
+4. Enable **announcement reviews & reset stops**, at the right end of the announcement row, and save. Unsupported clients refuse activation atomically.
+
 ## Screenshots
 
 These screenshots use isolated test data. Chat titles, quota values and times are examples.

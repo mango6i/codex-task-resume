@@ -17,6 +17,7 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('skillhub_state', Path(__file__).with_name('state.py'))
 core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
+import announcements
 
 
 def read_usage(codex=None):
@@ -85,8 +86,9 @@ def handle(path, payload, usage_provider=read_usage, now=None):
     probe_token = None
     with core.locked(path):
         s = core.load(path)
-        if not s['enabled']:
+        if not s['enabled'] and not announcements.enabled(s):
             return None
+        announcements.on_event(s, sid, event_name, now)
         turn_id = payload.get('turn_id')
         previous = s['runtime'].get(sid, {})
         if event_name == 'UserPromptSubmit':
@@ -115,7 +117,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         elif event_name != 'SessionStart':
             return None
         # Persist activity before an async query; other events keep updating it.
-        if (now - s.get('lastProbeAt', 0) >= s['settings']['checkSeconds']
+        if (s['enabled'] and now - s.get('lastProbeAt', 0) >= s['settings']['checkSeconds']
                 and now >= s.get('probeLeaseUntil', 0)):
             probe_token = uuid.uuid4().hex
             s.update(probeToken=probe_token, probeLeaseUntil=now+25, lastProbeAt=now)
@@ -144,6 +146,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 return None
             if q['accountId'] != s['accountId']:
                 s['enabled'] = False
+                s['settings']['announcementEnabled'] = False
                 core.event(s, now, 'account_changed')
                 core.atomic_write(path, s)
                 return {'systemMessage': '任务续接已暂停：登录账号改变，请重新检查配置。'}
