@@ -382,5 +382,16 @@
   "无法连接并验证当前客户端的任务控制接口；公告群发与重置停任务暂不可用。": "Cannot connect to and verify this client's task control interface. Announcement broadcasts and full-reset stops are unavailable.",
   "本机控制接口暂不可用，无法开启。关键词和指令可单独保存。": "Native task control is unavailable, so this feature cannot be enabled. You can save the keyword and instruction separately.",
   "关键词“{keyword}”：最近帖子匹配 {count} 条，仅预览，不会补发旧帖。": "Keyword \"{keyword}\": {count} recent posts match. Preview only; historical posts will not be dispatched.",
-  "关键词已修改，保存后生效；也可点击下方按钮预览。": "Keyword changed; save to apply, or preview it with the button below."
+  "关键词已修改，保存后生效；也可点击下方按钮预览。": "Keyword changed; save to apply, or preview it with the button below.",
+  " 个 · ": " selected · ",
+  "正在读取对话…": "Reading chats…",
+  "对话列表尚未加载": "Chat list has not loaded yet",
+  "正在读取本地对话…": "Reading local chats…",
+  "对话暂时未能加载，请点击“刷新本地对话”重试。": "Chats could not load. Click Refresh local chats to retry.",
+  "对话数据不完整，请刷新重试。": "Incomplete chat data; refresh to retry.",
+  "正在读取…": "Loading…",
+  "正在加载本地对话和已保存选择…": "Loading local chats and saved selection…",
+  "刷新失败，保留上次列表：": "Refresh failed; keeping the previous list: ",
+  "读取失败，可重试": "Load failed · Retry",
+  "读取失败，已保存的对话选择仍然保留。": "Loading failed. Your saved chat selection is preserved."
 }

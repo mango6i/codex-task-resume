@@ -164,7 +164,9 @@ def read_quota(path, reader_factory=Reader):
 
 def list_threads(path, cursor=None, reader_factory=Reader):
     state = saved_state(path)
-    with reader_factory() as reader:
+    connection = reader_factory()
+    connection.total_timeout = 12
+    with connection as reader:
         usage = reader.call('account/rateLimits/read', {})
         quota = core.quota(usage, (state or {}).get('settings', {}).get('limitId', 'codex'))
         if state and quota['accountId'] != state['accountId']:
@@ -190,7 +192,9 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
     before = saved_state(path)
     if not before or not before.get('accountId') or not before.get('controllerId'):
         raise ValueError('全局控制尚未初始化。只需初始化一个控制对话，不需要逐个对话设置。')
-    with reader_factory() as reader:
+    connection = reader_factory()
+    connection.total_timeout = 25
+    with connection as reader:
         usage = reader.call('account/rateLimits/read', {})
         quota = core.quota(usage, before['settings']['limitId'])
         if quota['accountId'] != before['accountId']:

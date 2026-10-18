@@ -1,8 +1,10 @@
 """Local stdio MCP server exposing OpenAI structured plugin settings. No network or inference."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import sys
+import threading
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT/'skills/quota-resume/scripts'))
@@ -16,8 +18,8 @@ import desktop_bridge
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
-EDITOR_URI = 'ui://task-resume/settings-studio-20261018-keyword.html'
-LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261018-keyword.html'
+EDITOR_URI = 'ui://task-resume/settings-studio-20261018-catalog.html'
+LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261018-catalog.html'
 UI_FILES = {EDITOR_URI: 'settings.html', LAUNCHER_URI: 'launcher.html'}
 PROPERTIES = {
     'threshold': {'type': 'number', 'title': '剩余额度低于（%）', 'minimum': 0.01, 'maximum': 99,
@@ -42,8 +44,11 @@ PROPERTIES = {
 
 
 def read_settings(path):
+    _, state = preferences.effective(path)
+    chosen = local_catalog.selection(state)
     return {'schema': {'type': 'object', 'properties': PROPERTIES},
             'values': preferences.values(path),
+            'selection': {'mode': chosen['mode'], 'threadIds': list(chosen['threads'])},
             'layout': [
                 {'kind': 'group', 'title': '统一管理', 'items': [
                     {'kind': 'tool', 'tool': 'settings.editor',
@@ -252,23 +257,38 @@ def main(start_monitor=True):
     worker = monitor.Worker(path) if start_monitor else None
     if worker:
         worker.start()
-    for line in sys.stdin:
-        request = None
+    output_lock = threading.Lock()
+    def respond(request):
         try:
-            request = json.loads(line)
-            if not isinstance(request, dict):
-                continue
-            if 'id' not in request:
-                continue
             result = dispatch(request.get('method'), request.get('params', {}), path)
             response = {'jsonrpc': '2.0', 'id': request['id'], 'result': result}
         except Exception as error:
             response = {'jsonrpc': '2.0', 'id': request.get('id') if isinstance(request, dict) else None,
                         'error': {'code': -32601 if str(error) == 'Method not found' else -32602,
                                   'message': str(error)}}
-        print(json.dumps(response, ensure_ascii=False, allow_nan=False), flush=True)
-    if worker:
-        worker.close()
+        with output_lock:
+            print(json.dumps(response, ensure_ascii=False, allow_nan=False), flush=True)
+    # A network-bound read must not hold the whole settings interface behind it.
+    # Keep mutations on the input thread; helpers retain their own state lock.
+    try:
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix='settings-read') as reads:
+            for line in sys.stdin:
+                try:
+                    request = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(request, dict) or 'id' not in request:
+                    continue
+                params = request.get('params')
+                slow_read = (request.get('method') == 'tools/call' and isinstance(params, dict)
+                             and params.get('name') in {'quota.read', 'announcements.check', 'tasks.list'})
+                if slow_read:
+                    reads.submit(respond, request)
+                else:
+                    respond(request)
+    finally:
+        if worker:
+            worker.close()
 
 
 if __name__ == '__main__':

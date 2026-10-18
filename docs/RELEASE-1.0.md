@@ -4,6 +4,7 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 
 ## 本次更新
 
+- 修复慢请求拖住对话列表的问题；加载期间保留已保存的选择，读取失败可重试，不再把未加载显示成空列表。
 - Tibo 公告关键词可手动填写，默认 reset；支持词语和短语，忽略英文大小写。换词不补发历史帖，保留逐帖逐对话去重。
 - 启用被客户端接口阻止时，开关回到真实保存状态；关键词和指令仍可独立保存。
 - 独立保存项目检查指令，默认使用 GPT-6 Astra「极高」。
@@ -26,6 +27,8 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 ![设置预览](https://raw.githubusercontent.com/mango6i/codex-task-resume/main/assets/settings-wide.png)
 
 ## English
+
+Fixes chat-list loading behind slow requests. Saved selections remain visible while loading, failed refreshes retain the previous list, and retry is available without treating an unloaded list as empty.
 
 Adds editable Tibo announcement keywords (default reset), clear activation failure feedback, deduplicated project reviews with exact custom instructions and GPT-6 Astra Extra high, and confirmed interruption after both quota windows fully reset. Workflow switches occupy separate trailing columns. Native desktop control and model support are verified per computer; unsupported clients block activation. Existing configuration and ledgers are retained.
 

@@ -79,6 +79,15 @@ class Catalog(unittest.TestCase):
         catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1002)
         self.assertEqual(core.load(self.path)['queue'], {})
 
+    def test_settings_read_exposes_saved_selection_without_loading_inventory(self):
+        catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1000)
+        original = self.path.read_bytes()
+        FakeReader.calls = []
+        result = settings_mcp.read_settings(self.path)
+        self.assertEqual(result['selection'], {'mode': 'selected', 'threadIds': ['task-a']})
+        self.assertEqual(FakeReader.calls, [])
+        self.assertEqual(original, self.path.read_bytes())
+
     def test_selected_scope_blocks_automatic_capture_and_preserves_completion_checks(self):
         catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1000)
         state = core.load(self.path)

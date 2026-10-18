@@ -41,6 +41,34 @@ class Settings(unittest.TestCase):
             self.assertFalse(r['values']['monitoringEnabled'])
             self.assertEqual(list(Path(td).iterdir()), [])
 
+    def test_slow_quota_read_does_not_block_local_chat_inventory_or_settings(self):
+        with tempfile.TemporaryDirectory() as td:
+            bootstrap = '''
+import sys,time
+sys.path[:0]=sys.argv[1:3]
+sys.argv=[sys.argv[0],'--state',sys.argv[3]]
+import local_catalog,settings_mcp
+def slow_quota(path):
+    time.sleep(.5)
+    return {'slowQuotaFinished':True}
+local_catalog.read_quota=slow_quota
+local_catalog.list_threads=lambda path,cursor=None:{'threads':[],'inventoryFinished':True}
+settings_mcp.main(start_monitor=False)
+'''
+            requests = [{'id': 1, 'method': 'tools/call', 'params': {'name': 'quota.read', 'arguments': {}}},
+                        {'id': 2, 'method': 'tools/call', 'params': {'name': 'tasks.list', 'arguments': {}}},
+                        {'id': 3, 'method': 'tools/call', 'params': {'name': 'settings.read', 'arguments': {}}}]
+            result = subprocess.run([sys.executable, '-X', 'utf8', '-B', '-c', bootstrap, str(ROOT/'server'),
+                str(ROOT/'skills/quota-resume/scripts'), str(Path(td)/'state.json')],
+                input='\n'.join(json.dumps(x) for x in requests)+'\n', capture_output=True,
+                text=True, encoding='utf-8', timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            replies = [json.loads(line) for line in result.stdout.splitlines()]
+            ids = [item['id'] for item in replies]
+            self.assertEqual(set(ids), {1, 2, 3})
+            self.assertLess(ids.index(2), ids.index(1))
+            self.assertLess(ids.index(3), ids.index(1))
+
     def test_save_before_setup_and_import_without_activation(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td)/'state.json'

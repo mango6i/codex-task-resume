@@ -287,8 +287,8 @@ el('quota-refresh').addEventListener('click',refreshQuota);
 setInterval(()=>{if(initialized&&!document.hidden)refreshQuota();},60000);
 function controls(){const dirty=!!saved&&Object.keys(changes()).length>0;el('save').disabled=!ready||busy||!dirty;el('reset').disabled=!ready||busy||!dirty;el('fields').disabled=!ready||busy;el('settings').setAttribute('aria-busy',String(busy||loading));const confirmed=ready&&!busy&&!dirty&&!!lastSavedAt;el('save').dataset.saved=String(confirmed);el('save-label').textContent=busy?t('正在保存…'):confirmed?t('已保存'):t('保存设置');preview();}
 function apply(v){if(!v||ids.some(id=>!(id in v)))throw new Error(t('设置数据不完整，未修改已保存参数。'));saved={...v};for(const id of ids){if(switches.has(id))el(id).checked=!!v[id];else el(id).value=v[id];}ready=true;controls();}
-function unpack(result){if(result?.isError){const error=new Error(result.content?.find(x=>x.type==='text')?.text||t('保存失败'));error.details=result.structuredContent;throw error;}const data=result?.structuredContent;if(!data?.values)throw new Error(t('客户端没有返回有效设置。'));const setup=result?._meta?.['skillhub/setup'];if(setup){el('setup-text').textContent=setup.configured?t('控制对话已初始化 · 脚本信任请在客户端确认'):t('尚未初始化控制对话');el('setup-state').dataset.state=setup.configured?'configured':'needed';}else{el('setup-text').textContent=t('脚本信任与初始化请按指南确认');}return data.values;}
-async function call(name,args){return request('tools/call',{name,arguments:args},['quota.read','announcements.check','settings.update'].includes(name)?35000:15000);}
+function unpack(result){if(result?.isError){const error=new Error(result.content?.find(x=>x.type==='text')?.text||t('保存失败'));error.details=result.structuredContent;throw error;}const data=result?.structuredContent;if(data?.selection)seedTaskSelection(data.selection);if(!data?.values)throw new Error(t('客户端没有返回有效设置。'));const setup=result?._meta?.['skillhub/setup'];if(setup){el('setup-text').textContent=setup.configured?t('控制对话已初始化 · 脚本信任请在客户端确认'):t('尚未初始化控制对话');el('setup-state').dataset.state=setup.configured?'configured':'needed';}else{el('setup-text').textContent=t('脚本信任与初始化请按指南确认');}return data.values;}
+async function call(name,args){return request('tools/call',{name,arguments:args},['quota.read','announcements.check','settings.update','tasks.list','tasks.select'].includes(name)?35000:15000);}
 async function announcementStatus(check=false){
  const button=el('announcement-check');button.disabled=true;
  if(check)el('announcement-status').textContent=t('正在读取公告并核实本机接口…');
@@ -299,7 +299,7 @@ async function announcementStatus(check=false){
 el('announcement-check').addEventListener('click',()=>announcementStatus(true));
 function announcementControl(control){if(!control)return;const unavailable=control.available===false;el('announcement-enable-state').textContent=t(unavailable?'本机控制接口暂不可用，无法开启。关键词和指令可单独保存。':'原生控制通道与模型已核实。');el('announcement-enable-state').dataset.warning=String(unavailable);}
 el('announcement-home').addEventListener('click',async event=>{if(window.parent===window)return;event.preventDefault();try{await request('ui/open-link',{url:'https://x.com/thsottiaux'});}catch{feedback(t('来源页面未打开'),'https://x.com/thsottiaux','error');}});
-let taskLoaded=false,taskBusy=false,taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
+let taskLoaded=false,taskBusy=false,taskSelectionSeeded=false,taskLoadError='',taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
 const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('存在排程记录 · 待核验')};
 function renderMonitor(data){
  const monitor=data.monitor,quota=data.quota,phase=monitor.phase;
@@ -311,8 +311,13 @@ function renderMonitor(data){
  el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'');
  return taskPhases[phase]||t('状态待核验');
 }
+function seedTaskSelection(selection){
+ if(taskLoaded||taskSelectionSeeded||!selection||!Array.isArray(selection.threadIds)||!['automatic','selected'].includes(selection.mode))return;
+ taskChosen=new Set(selection.threadIds);taskSaved=new Set(taskChosen);taskSavedMode=selection.mode;
+ document.querySelector('input[name="task-mode"][value="'+taskSavedMode+'"]').checked=true;taskSelectionSeeded=true;taskControls();
+}
 function taskMode(){return document.querySelector('input[name="task-mode"]:checked').value;}
-function taskControls(){el('task-select-all').disabled=taskBusy||!taskLoaded||!visibleTasks().some(x=>x.selectable);el('task-clear').disabled=taskBusy||!taskChosen.size;const dirty=taskMode()!==taskSavedMode||taskChosen.size!==taskSaved.size||[...taskChosen].some(id=>!taskSaved.has(id));el('task-save').disabled=!taskLoaded||taskBusy||!dirty;const confirmed=taskConfirmed&&!dirty&&!taskBusy;el('task-save').dataset.saved=String(confirmed);el('task-save').textContent=taskBusy?t('正在处理…'):confirmed?t('已保存选择'):t('保存选择');el('task-refresh').disabled=taskBusy;el('task-more').disabled=taskBusy;el('task-count').textContent=t('已选 ')+taskChosen.size+t(' 个 · 已读取 ')+taskRows.length+t(' 个')+(dirty?t(' · 有未保存的选择'):'');}
+function taskControls(){el('task-select-all').disabled=taskBusy||!taskLoaded||!visibleTasks().some(x=>x.selectable);el('task-clear').disabled=taskBusy||!taskChosen.size;const dirty=taskMode()!==taskSavedMode||taskChosen.size!==taskSaved.size||[...taskChosen].some(id=>!taskSaved.has(id));el('task-save').disabled=!taskLoaded||taskBusy||!dirty;const confirmed=taskConfirmed&&!dirty&&!taskBusy;el('task-save').dataset.saved=String(confirmed);el('task-save').textContent=taskBusy?t('正在处理…'):confirmed?t('已保存选择'):t('保存选择');el('task-refresh').disabled=taskBusy;el('task-more').disabled=taskBusy;document.querySelectorAll('input[name="task-mode"]').forEach(x=>x.disabled=taskBusy);el('task-list').setAttribute('aria-busy',String(taskBusy));el('task-count').textContent=t('已选 ')+taskChosen.size+(taskLoaded?t(' 个 · 已读取 ')+taskRows.length+t(' 个'):t(' 个 · ')+(taskBusy?t('正在读取对话…'):t('对话列表尚未加载')))+(dirty?t(' · 有未保存的选择'):'');}
 function visibleTasks(){const query=el('task-search').value.toLowerCase();return taskRows.filter(t=>(t.title+' '+t.project).toLowerCase().includes(query));}
 function taskRender(){
  const query=el('task-search').value.toLowerCase();const list=el('task-list');list.replaceChildren();
@@ -322,18 +327,19 @@ function taskRender(){
   const text=document.createElement('div');const title=document.createElement('strong');title.textContent=item.title;const project=document.createElement('small');project.textContent=item.project||t('无本地项目');text.append(title,project);
   const status=document.createElement('span');status.className='task-badge';status.textContent=!item.selectable?t('不可选'):item.activity==='observed_active'?t('运行活动已记录'):item.activity==='observed_stopped'?t('回合已结束'):t('尚无任务事件');if(item.lastEventAt){status.textContent+=' · '+timeText(item.lastEventAt);status.title=t('事件时间：{time}；发送前仍需原生状态复查。',{time:new Date(item.lastEventAt*1000).toLocaleString(window.TaskResumeI18n.language)});}else if(item.reason)status.title=t(item.reason);row.append(check,text,status);list.append(row);
  }
- if(!list.children.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=taskRows.length?t('没有匹配的对话'):t('没有读到支持的本地对话。');list.append(empty);}
+ if(!list.children.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=taskRows.length?t('没有匹配的对话'):taskBusy?t('正在读取本地对话…'):!taskLoaded?t(taskLoadError?'对话暂时未能加载，请点击“刷新本地对话”重试。':'对话列表尚未加载'):t('没有读到支持的本地对话。');list.append(empty);}
  el('task-more').hidden=!taskNext;taskControls();
 }
-function taskResult(response){if(response?.isError)throw new Error(response.content?.find(x=>x.type==='text')?.text||t('读取失败'));if(!response?.structuredContent)throw new Error(t('客户端没有返回对话数据'));return response.structuredContent;}
+function taskResult(response){if(response?.isError)throw new Error(response.content?.find(x=>x.type==='text')?.text||t('读取失败'));if(response?.structuredContent)return response.structuredContent;try{return JSON.parse(response.content.find(x=>x.type==='text').text);}catch{throw new Error(t('客户端没有返回对话数据'));}}
 async function refreshTasks(more=false){
- if(taskBusy)return;taskBusy=true;taskControls();el('task-status').textContent=t('正在只读加载本地对话，不调用模型…');
+ if(taskBusy)return;taskBusy=true;taskLoadError='';taskRender();el('task-status').textContent=t('正在只读加载本地对话，不调用模型…');if(!taskLoaded){el('task-phase').textContent=t('正在读取…');el('task-monitor').textContent=t('正在加载本地对话和已保存选择…');}
  try{const data=taskResult(await call('tasks.list',more&&taskNext?{cursor:taskNext}:{}));
-  if(!taskLoaded){taskChosen=new Set(data.selection.threadIds);taskSaved=new Set(taskChosen);taskSavedMode=data.selection.mode;document.querySelector('input[name="task-mode"][value="'+taskSavedMode+'"]').checked=true;}
+  if(!Array.isArray(data.threads)||!Array.isArray(data.selection?.threadIds)||!data.quota||!data.monitor)throw new Error(t('对话数据不完整，请刷新重试。'));
+  seedTaskSelection(data.selection);
   taskRows=more?[...new Map([...taskRows,...data.threads].map(t=>[t.id,t])).values()]:data.threads;taskNext=data.nextCursor;taskLoaded=true;
   renderMonitor(data);
   el('task-status').textContent=t('读取完成。勾选后点击保存选择；不会向对话发送设置消息。');
- }catch(error){el('task-status').textContent=t('读取失败：')+error.message;}
+ }catch(error){taskLoadError=error.message;el('task-status').textContent=t(taskLoaded?'刷新失败，保留上次列表：':'读取失败：')+error.message;if(!taskLoaded){el('task-phase').textContent=t('读取失败，可重试');el('task-monitor').textContent=t('读取失败，已保存的对话选择仍然保留。');}}
  finally{taskBusy=false;taskRender();}
 }
 el('task-select-all').addEventListener('click',()=>{if(taskBusy)return;const next=new Set([...taskChosen,...visibleTasks().filter(x=>x.selectable).map(x=>x.id)]);if(next.size>200){feedback(t('续接范围未保存'),t('最多选择 200 个对话，请缩小搜索范围。'),'error');return;}taskChosen=next;hideFeedback();taskRender();});
