@@ -365,5 +365,10 @@
   "读取公告监控状态": "Read announcement monitoring status",
   "只读读取公告、去重记录、原生控制接口和全量重置停任务状态。": "Read announcement, deduplication, native control and full-reset stop status.",
   "检查公告与客户端兼容性": "Check announcements and client compatibility",
-  "读取 Tibo 原创帖并核实本机控制通道，不启用功能、不发送消息、不停止任务。": "Read original Tibo posts and verify local native control without activation, messaging or interruption."
+  "读取 Tibo 原创帖并核实本机控制通道，不启用功能、不发送消息、不停止任务。": "Read original Tibo posts and verify local native control without activation, messaging or interruption.",
+  "有 {count} 条发送未确认，不会自动重发。": "{count} sends are unconfirmed and will not be retried automatically.",
+  "等待停止任务": "Waiting to stop tasks",
+  "停止检查已完成": "Stop check completed",
+  "停止未确认，请手动检查任务": "Stop unconfirmed; check tasks manually",
+  "已确认停止 {count} 个任务": "Confirmed {count} tasks stopped"
 }
