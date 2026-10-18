@@ -16,7 +16,7 @@ document.getElementById('open').addEventListener('click',async()=>{
  const button=document.getElementById('open'),status=document.getElementById('status');status.dataset.error='false';
  if(typeof window.openai?.requestModal!=='function'){status.textContent=t('当前客户端未提供弹窗接口。请点击插件原生设置中的“管理 Codex 任务续接”，或固定应用入口“Codex 任务续接 · 管理”。');status.dataset.error='true';return;}
  button.disabled=true;
- try{await window.openai.requestModal({template:'ui://task-resume/settings-studio-20261018-announcements.html',params:{}});status.textContent=t('已请求客户端打开设置弹窗。保存后可在面板内确认结果。');}
+ try{await window.openai.requestModal({template:'ui://task-resume/settings-studio-20261018-balanced-switches.html',params:{}});status.textContent=t('已请求客户端打开设置弹窗。保存后可在面板内确认结果。');}
  catch(error){status.textContent=t('弹窗未打开：')+(error?.message||t('客户端拒绝了请求。'));status.dataset.error='true';}
  finally{button.disabled=false;}
 });
