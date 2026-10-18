@@ -370,5 +370,17 @@
   "等待停止任务": "Waiting to stop tasks",
   "停止检查已完成": "Stop check completed",
   "停止未确认，请手动检查任务": "Stop unconfirmed; check tasks manually",
-  "已确认停止 {count} 个任务": "Confirmed {count} tasks stopped"
+  "已确认停止 {count} 个任务": "Confirmed {count} tasks stopped",
+  "公告关键词": "Announcement keyword",
+  "公告关键词不能为空。": "Announcement keyword cannot be blank.",
+  "公告关键词需为 1 到 100 字符，不能全为空格或包含换行。": "Use 1 to 100 characters for the announcement keyword; blank text and line breaks are not allowed.",
+  "正文包含此文字即匹配，忽略英文大小写。默认 reset。": "Match this text anywhere in the post, ignoring case. Default: reset.",
+  "默认 reset。正文包含此文字即匹配，忽略英文大小写，不使用正则表达式。": "Default: reset. Match literal text anywhere in the post, ignoring case; regular expressions are not used.",
+  "只读检查 Tibo 的新原创帖，不使用模型轮询。": "Read-only checks for new original Tibo posts; no model polling.",
+  "新帖包含所设关键词时触发项目检查；检测到两项额度恢复 100% 时停止运行中的本地项目。必须通过原生控制接口检查，默认关闭。": "New posts containing the saved keyword trigger project reviews. Stop running local projects when both quotas reset to 100%. Verified native control is required; disabled by default.",
+  "新帖匹配关键词时检查全项目；额度全部重置时停止运行项目。": "Matching new posts trigger project reviews; a full quota reset stops running projects.",
+  "无法连接并验证当前客户端的任务控制接口；公告群发与重置停任务暂不可用。": "Cannot connect to and verify this client's task control interface. Announcement broadcasts and full-reset stops are unavailable.",
+  "本机控制接口暂不可用，无法开启。关键词和指令可单独保存。": "Native task control is unavailable, so this feature cannot be enabled. You can save the keyword and instruction separately.",
+  "关键词“{keyword}”：最近帖子匹配 {count} 条，仅预览，不会补发旧帖。": "Keyword \"{keyword}\": {count} recent posts match. Preview only; historical posts will not be dispatched.",
+  "关键词已修改，保存后生效；也可点击下方按钮预览。": "Keyword changed; save to apply, or preview it with the button below."
 }

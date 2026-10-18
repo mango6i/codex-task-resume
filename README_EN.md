@@ -24,8 +24,9 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 
 ## Tibo reset announcements and full-reset stops
 
-An optional, independent workflow reads [@thsottiaux](https://x.com/thsottiaux). A new original post containing the standalone keyword `reset` (case insensitive) requests a project review in all eligible local root chats. This scope is independent of the continuation allowlist. Historical posts, reposts and quoted text do not trigger a review; each post is sent at most once per chat.
+An optional, independent workflow reads [@thsottiaux](https://x.com/thsottiaux). A new original post containing the saved keyword (default `reset`, case insensitive) requests a project review in all eligible local root chats. This scope is independent of the continuation allowlist. Historical posts, reposts and quoted text do not trigger a review; each post is sent at most once per chat.
 
+- **Custom keyword:** enter one word or phrase, matched as literal text without regular expressions. A change applies only to posts published after saving; historical posts are not replayed and send history remains deduplicated.
 - **Custom instruction:** the default is `请帮我全量检查此项目是否还有可以优化的地方，隐藏的问题，修复好`. Whitespace and newlines are preserved.
 - **Model:** GPT-6 Astra, Extra high (`gpt-6-astra` / `xhigh`). No substitute is selected if unavailable.
 - **Running chats:** deferred; waiting-for-input/approval, paused, archived, remote and subagent chats are excluded. Completed projects can receive a new review.
@@ -40,8 +41,8 @@ The connected plugin service checks the public profile every 5 minutes by defaul
 
 1. Initialize one controller on this computer and trust the hooks as described below.
 2. Click **Check announcements & compatibility**. This action does not send messages or interrupt tasks.
-3. Set the review instruction and announcement interval.
-4. Enable **announcement reviews & reset stops**, at the right end of the announcement row, and save. Unsupported clients refuse activation atomically.
+3. Set the keyword, review instruction and announcement interval. The keyword defaults to `reset` and can be saved independently. **Check announcements & compatibility** can preview an unsaved keyword without dispatching reviews.
+4. Enable **announcement reviews & reset stops**, at the right end of the announcement row, and save. Unsupported clients refuse activation atomically and restore the switch to its actual saved state. This is not a plugin permission toggle that can be forced on in the panel; the keyword and instruction can still be saved separately.
 
 ## Screenshots
 

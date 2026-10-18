@@ -13,6 +13,7 @@ import state as core
 
 PROFILE = 'https://x.com/thsottiaux'
 HANDLE = 'thsottiaux'
+DEFAULT_KEYWORD = 'reset'
 DEFAULT_MESSAGE = '请帮我全量检查此项目是否还有可以优化的地方，隐藏的问题，修复好'
 MODEL = 'gpt-6-astra'
 EFFORT = 'xhigh'
@@ -111,6 +112,36 @@ def enabled(s):
     return s.get('settings', {}).get('announcementEnabled') is True
 
 
+def normalize_keyword(value):
+    if (not isinstance(value, str) or not 1 <= len(value.strip()) <= 100
+            or any(ord(c) < 32 for c in value)):
+        raise ValueError('公告关键词需为 1 到 100 字符，不能全为空格或包含换行。')
+    return value.strip()
+
+
+def keyword(s):
+    return normalize_keyword(s.get('settings', {}).get('announcementKeyword', DEFAULT_KEYWORD))
+
+
+def matches(text, value=DEFAULT_KEYWORD):
+    return normalize_keyword(value).casefold() in text.casefold()
+
+
+def change_keyword(s, now):
+    a = s.get('announcements')
+    if not a:
+        return
+    # Keep high-water and send history. A keyword edit must not replay old posts
+    # or dispatch unsent events selected under the previous rule.
+    for event in a.get('events', {}).values():
+        if event.get('status') in {'pending', 'deferred'}:
+            event['status'] = 'keyword_changed'
+        for target in event.get('targets', {}).values():
+            if target['status'] in {'pending', 'deferred'}:
+                target['status'] = 'keyword_changed'
+    a.update(keywordChangedAt=now, lastCheckAt=0, probeLeaseUntil=0, probeToken=None)
+
+
 def activate(s, value, now):
     a = s.setdefault('announcements', {'events': {}})
     for event in a.setdefault('events', {}).values():
@@ -155,11 +186,13 @@ def record(s, posts, now):
     if not valid:
         raise ValueError('公告列表为空，未更新基线。')
     created = []
+    current_keyword = keyword(s)
+    since = max(a['enabledAt'], a.get('keywordChangedAt', 0))
     for p in sorted(valid, key=lambda p: int(p['id'])):
-        if (int(p['id']) <= old_high or p['publishedAt'] < a['enabledAt']
-                or not re.search(r'\breset\b', p['text'], re.I) or p['id'] in a['events']):
+        if (int(p['id']) <= old_high or p['publishedAt'] < since
+                or not matches(p['text'], current_keyword) or p['id'] in a['events']):
             continue
-        a['events'][p['id']] = {**p, 'activationId': a['activationId'], 'detectedAt': now,
+        a['events'][p['id']] = {**p, 'keyword': current_keyword, 'activationId': a['activationId'], 'detectedAt': now,
             'expiresAt': now+72*3600, 'status': 'pending', 'prepared': False, 'targets': {}}
         created.append(p['id'])
     a.update(highWaterId=str(max(old_high, *(int(p['id']) for p in valid))),
@@ -208,7 +241,7 @@ def status(s):
     a = s.get('announcements', {})
     events = list(a.get('events', {}).values())
     targets = [t for e in events for t in e.get('targets', {}).values()]
-    return {'enabled': enabled(s), 'profile': PROFILE, 'keyword': 'reset', 'model': MODEL,
+    return {'enabled': enabled(s), 'profile': PROFILE, 'keyword': keyword(s), 'model': MODEL,
         'thinking': EFFORT, 'baselineComplete': bool(a.get('baselineComplete')),
         'lastCheckAt': a.get('lastCheckAt'), 'lastSuccessAt': a.get('lastSuccessAt'),
         'lastError': a.get('lastError'), 'lastPost': a.get('lastPost'),

@@ -12,7 +12,7 @@ import announcements as ann
 import local_catalog
 import state as core
 
-UNAVAILABLE = '当前客户端未开放可验证的原生任务控制通道；不能自动群发或停止任务。'
+UNAVAILABLE = '无法连接并验证当前客户端的任务控制接口；公告群发与重置停任务暂不可用。'
 
 
 class Desktop:

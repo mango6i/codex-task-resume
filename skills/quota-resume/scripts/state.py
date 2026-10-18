@@ -347,7 +347,10 @@ def main():
                     raise ValueError('Invalid saved preferences')
                 cfg.update({k: v for k, v in saved.items() if k in {
                     'threshold', 'delaySeconds', 'checkSeconds', 'expiryHours', 'message', 'limitId',
-                    'announcementMessage', 'announcementCheckMinutes'}})
+                    'announcementMessage', 'announcementCheckMinutes', 'announcementKeyword'}})
+            if 'announcementKeyword' in cfg:
+                import announcements
+                cfg['announcementKeyword'] = announcements.normalize_keyword(cfg['announcementKeyword'])
             defaults = {'threshold': 2, 'delaySeconds': 120, 'checkSeconds': 60,
                         'expiryHours': 72, 'message': '继续任务', 'limitId': args.limit_id}
             for key, value in defaults.items():

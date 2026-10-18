@@ -4,7 +4,8 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 
 ## 本次更新
 
-- 增加 Tibo 新原创帖 reset 检测、历史基线和逐帖逐对话去重。
+- Tibo 公告关键词可手动填写，默认 reset；支持词语和短语，忽略英文大小写。换词不补发历史帖，保留逐帖逐对话去重。
+- 启用被客户端接口阻止时，开关回到真实保存状态；关键词和指令仍可独立保存。
 - 独立保存项目检查指令，默认使用 GPT-6 Astra「极高」。
 - 实际五小时和每周额度全部恢复 100% 后，停止运行项目并取消本轮未发送检查；初始满额度不误触发。
 - 每个功能独占一行，开关位于该行最右侧；支持小窗口、宽屏、深浅色与系统中英文。
@@ -26,6 +27,6 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 
 ## English
 
-Adds new original Tibo reset-post detection, deduplicated project reviews with exact custom instructions and GPT-6 Astra Extra high, and confirmed interruption after both quota windows fully reset. Workflow switches occupy separate trailing columns. Native desktop control and model support are verified per computer; unsupported clients block activation. Existing configuration and ledgers are retained.
+Adds editable Tibo announcement keywords (default reset), clear activation failure feedback, deduplicated project reviews with exact custom instructions and GPT-6 Astra Extra high, and confirmed interruption after both quota windows fully reset. Workflow switches occupy separate trailing columns. Native desktop control and model support are verified per computer; unsupported clients block activation. Existing configuration and ledgers are retained.
 
 The native control workflow is validated with isolated protocol fixtures; live availability depends on the installed desktop client. Quota/profile checks have polling and network latency. A stop cannot refund usage already incurred. Windows, Python 3.10+, Codex CLI and a compatible local plugin client are required.

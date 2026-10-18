@@ -67,6 +67,42 @@ class AnnouncementState(unittest.TestCase):
         self.assertEqual(ann.record(self.s, [p], NOW+1), [])
         self.assertEqual(len(self.s['announcements']['events']), 1)
 
+    def test_default_custom_phrase_chinese_and_literal_keyword_matching(self):
+        self.s['settings'].pop('announcementKeyword')
+        self.assertEqual(ann.keyword(self.s), 'reset')
+        self.assertTrue(ann.matches('Day 8/ Reset'))
+        self.assertTrue(ann.matches('Global RESET landing today', 'global reset'))
+        self.assertTrue(ann.matches('今日限额重置完成', '限额重置'))
+        self.assertTrue(ann.matches('Announcement: R.SET', 'r.set'))
+        self.assertFalse(ann.matches('reset', 'r.set'))
+        self.assertFalse(ann.matches('reset', '[reset]'))
+        self.s['settings']['announcementKeyword'] = '限额重置'
+        p = post(NOW-5, text='今日限额重置')
+        self.assertEqual(ann.record(self.s, [p], NOW), [p['id']])
+        self.assertEqual(self.s['announcements']['events'][p['id']]['keyword'], '限额重置')
+
+    def test_keyword_change_cancels_unsent_keeps_ledger_and_rejects_pre_change_posts(self):
+        event_id = self.event()
+        event = self.s['announcements']['events'][event_id]
+        event['targets']['sent'] = {'status': 'sent', 'token': 'sent-token'}
+        event['targets']['uncertain'] = {'status': 'uncertain', 'token': 'unknown-token'}
+        self.s['announcements']['probeToken'] = 'old-probe'
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td)/'state.json'
+            core.atomic_write(path, self.s)
+            preferences.update(path, {'announcementKeyword': ' New limit '}, now=NOW)
+            saved = core.load(path)
+        old = saved['announcements']['events'][event_id]
+        self.assertEqual(old['status'], 'keyword_changed')
+        self.assertEqual(old['targets']['task']['status'], 'keyword_changed')
+        self.assertEqual(old['targets']['sent'], {'status': 'sent', 'token': 'sent-token'})
+        self.assertEqual(old['targets']['uncertain'], {'status': 'uncertain', 'token': 'unknown-token'})
+        self.assertIsNone(saved['announcements']['probeToken'])
+        self.assertEqual(ann.record(saved, [post(NOW-2, text='New limit')], NOW+1), [])
+        latest = post(NOW+2, text='NEW LIMIT')
+        self.assertEqual(ann.record(saved, [latest], NOW+3), [latest['id']])
+        self.assertEqual(ann.record(saved, [latest], NOW+4), [])
+
     def test_account_identity_activation_and_timestamp_are_enforced(self):
         with self.assertRaises(ValueError):
             ann.record(self.s, [post(NOW-5, author='other')], NOW)
@@ -278,6 +314,25 @@ class NativeControl(unittest.TestCase):
                 response = settings_mcp.dispatch('tools/call', {'name': 'settings.update', 'arguments': {
                     'set': {'announcementEnabled': True, 'announcementMessage': 'Changed'}}}, path)
             self.assertTrue(response['isError'])
+            self.assertTrue(response['structuredContent']['activationBlocked'])
+            self.assertEqual(response['structuredContent']['values'], preferences.values(path))
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_unsaved_keyword_check_is_read_only_and_uses_preview_keyword(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td)/'state.json'
+            s = state()
+            ann.activate(s, True, NOW-100)
+            core.atomic_write(path, s)
+            original = path.read_bytes()
+            with patch.object(ann, 'fetch_posts', return_value=[post(NOW-5, text='New LIMIT')]), patch.object(
+                    bridge, 'capability', return_value={'available': False, 'reason': 'unsupported'}):
+                response = settings_mcp.dispatch('tools/call', {'name': 'announcements.check',
+                    'arguments': {'keyword': ' limit '}}, path)
+            self.assertFalse(response.get('isError'))
+            self.assertEqual(response['structuredContent']['previewKeyword'], 'limit')
+            self.assertEqual(response['structuredContent']['previewMatchCount'], 1)
+            self.assertEqual(response['structuredContent']['keyword'], 'reset')
             self.assertEqual(path.read_bytes(), original)
 
     def test_direct_native_proof_rejects_unloaded_or_different_turn(self):

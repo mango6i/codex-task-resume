@@ -37,6 +37,7 @@ class Settings(unittest.TestCase):
             r = settings_mcp.read_settings(path)
             self.assertEqual(set(r['schema']['properties']), set(r['values']))
             self.assertEqual(r['values']['message'], '继续任务')
+            self.assertEqual(r['values']['announcementKeyword'], 'reset')
             self.assertFalse(r['values']['monitoringEnabled'])
             self.assertEqual(list(Path(td).iterdir()), [])
 
@@ -46,7 +47,8 @@ class Settings(unittest.TestCase):
             message = '  继续任务\n请保持原始范围。  '
             announcement = '  项目检查\n保留我的原文。  '
             preferences.update(path, {'threshold': 7, 'delayMinutes': 1.5, 'message': message,
-                                      'announcementMessage': announcement, 'announcementCheckMinutes': 3})
+                                      'announcementMessage': announcement, 'announcementCheckMinutes': 3,
+                                      'announcementKeyword': ' Global reset '})
             self.assertFalse(path.exists())
             cmd = [sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'), '--state', str(path),
                 'init', '--account', 'a', '--controller', 'controller', '--authorized', '--preserve-enabled-state']
@@ -59,6 +61,7 @@ class Settings(unittest.TestCase):
             self.assertEqual(s['settings']['message'], message)
             self.assertEqual(s['settings']['announcementMessage'], announcement)
             self.assertEqual(s['settings']['announcementCheckMinutes'], 3)
+            self.assertEqual(s['settings']['announcementKeyword'], 'Global reset')
             self.assertFalse(s['settings'].get('announcementEnabled', False))
             self.assertNotIn('authorization', s)
             preferences.update(path, {'message': '另一个内容'})
@@ -77,7 +80,9 @@ class Settings(unittest.TestCase):
             preferences.update(path, {'threshold': 5})
             old = preferences.preference_path(path).read_bytes()
             for patch in [{'threshold': 100}, {'message': '   '}, {'checkSeconds': 30.5},
-                          {'message': '新值', 'threshold': -1}, {'monitoringEnabled': 'yes'}]:
+                          {'message': '新值', 'threshold': -1}, {'monitoringEnabled': 'yes'},
+                          {'announcementKeyword': '   '}, {'announcementKeyword': 123},
+                          {'announcementKeyword': 'x'*101}, {'announcementKeyword': 'reset\nlimit'}]:
                 with self.subTest(patch=patch), self.assertRaises(ValueError):
                     preferences.update(path, patch)
                 self.assertEqual(old, preferences.preference_path(path).read_bytes())

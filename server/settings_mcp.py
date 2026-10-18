@@ -1,7 +1,6 @@
 """Local stdio MCP server exposing OpenAI structured plugin settings. No network or inference."""
 import argparse
 import json
-import re
 from pathlib import Path
 import sys
 
@@ -17,8 +16,8 @@ import desktop_bridge
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
-EDITOR_URI = 'ui://task-resume/settings-studio-20261018-balanced-switches.html'
-LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261018-balanced-switches.html'
+EDITOR_URI = 'ui://task-resume/settings-studio-20261018-keyword.html'
+LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261018-keyword.html'
 UI_FILES = {EDITOR_URI: 'settings.html', LAUNCHER_URI: 'launcher.html'}
 PROPERTIES = {
     'threshold': {'type': 'number', 'title': '剩余额度低于（%）', 'minimum': 0.01, 'maximum': 99,
@@ -30,13 +29,15 @@ PROPERTIES = {
     'checkSeconds': {'type': 'integer', 'title': '检测最短间隔（秒）', 'minimum': 30, 'maximum': 3600,
                     'description': '插件服务连接期间定期查询，与任务事件共用节流；断开后停止。'},
     'announcementCheckMinutes': {'type': 'integer', 'title': '公告检查间隔（分钟）', 'minimum': 1, 'maximum': 60,
-                                'description': '只读检查 Tibo 的新原创帖，关键词 reset，不使用模型轮询。'},
+                                'description': '只读检查 Tibo 的新原创帖，不使用模型轮询。'},
+    'announcementKeyword': {'type': 'string', 'title': '公告关键词', 'minLength': 1, 'maxLength': 100,
+                            'default': 'reset', 'description': '默认 reset。正文包含此文字即匹配，忽略英文大小写，不使用正则表达式。'},
     'announcementMessage': {'type': 'string', 'title': '公告触发后发送的检查指令', 'minLength': 1, 'maxLength': 12000,
                             'description': '发送到全部符合条件的本地根对话，使用 GPT-6 Astra 极高。保留原文和换行。'},
     'monitoringEnabled': {'type': 'boolean', 'title': '开启自动续接',
                           'description': '需先初始化控制对话，并在本地客户端信任检测脚本。关闭后立即停止后续发送。'},
     'announcementEnabled': {'type': 'boolean', 'title': '开启 Tibo 公告检查与重置停任务',
-                            'description': '新 reset 帖触发项目检查；检测到两项额度恢复 100% 时停止运行中的本地项目。必须通过原生控制接口检查，默认关闭。'}
+                            'description': '新帖包含所设关键词时触发项目检查；检测到两项额度恢复 100% 时停止运行中的本地项目。必须通过原生控制接口检查，默认关闭。'}
 }
 
 
@@ -53,6 +54,7 @@ def read_settings(path):
                 {'kind': 'group', 'title': '续接内容', 'items': [
                     {'kind': 'property', 'property': 'message'}]},
                 {'kind': 'group', 'title': 'Tibo 重置公告', 'items': [
+                    {'kind': 'property', 'property': 'announcementKeyword'},
                     {'kind': 'property', 'property': 'announcementCheckMinutes'},
                     {'kind': 'property', 'property': 'announcementMessage'}]},
                 {'kind': 'group', 'title': '运行控制', 'items': [
@@ -70,8 +72,8 @@ def tools():
          'annotations': {'readOnlyHint': True, 'openWorldHint': False}},
         {'name': 'announcements.check', 'title': '检查公告与客户端兼容性',
          'description': '读取 Tibo 原创帖并核实本机控制通道，不启用功能、不发送消息、不停止任务。',
-         'inputSchema': {'type': 'object', 'additionalProperties': False},
-         'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True}},
+         'inputSchema': {'type': 'object', 'properties': {'keyword': PROPERTIES['announcementKeyword']}, 'additionalProperties': False},
+         'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': True}},
         {'name': 'settings.read', 'title': '读取额度恢复续接设置',
          'description': '读取设置表单及当前参数，不创建监控或发送消息。',
          'inputSchema': {'type': 'object', 'additionalProperties': False},
@@ -175,14 +177,13 @@ def dispatch_raw(method, params, path):
                 result = read_settings(path)
             elif name == 'announcements.status' and not args:
                 result = announcements.status(core.load(path) if path.exists() else {'settings': {}})
-            elif name == 'announcements.check' and not args:
+            elif name == 'announcements.check' and not set(args)-{'keyword'}:
+                selected_keyword = announcements.normalize_keyword(args.get('keyword', preferences.values(path)['announcementKeyword']))
                 posts = announcements.fetch_posts()
-                if path.exists() and announcements.enabled(core.load(path)):
-                    result = announcements.tick(path, provider=lambda: posts, force=True)
-                else:
-                    result = announcements.status(core.load(path) if path.exists() else {'settings': {}})
-                    result['previewPost'] = posts[0]
-                    result['previewMatchCount'] = sum(bool(re.search(r'\breset\b', p['text'], re.I)) for p in posts)
+                result = announcements.status(core.load(path) if path.exists() else {'settings': {}})
+                result['previewPost'] = posts[0]
+                result['previewKeyword'] = selected_keyword
+                result['previewMatchCount'] = sum(announcements.matches(p['text'], selected_keyword) for p in posts)
                 result['control'] = desktop_bridge.capability(path)
             elif name in {'settings.editor', 'settings.manage'} and not args:
                 result = {'values': preferences.values(path), 'configured': path.exists(),
@@ -195,7 +196,8 @@ def dispatch_raw(method, params, path):
                 if isinstance(args['set'], dict) and args['set'].get('announcementEnabled') is True:
                     control = desktop_bridge.capability(path)
                     if not control['available']:
-                        raise ValueError(i18n.text(control['reason'])+i18n.text(' 新功能未启用；原有参数未修改。'))
+                        return {'isError': True, 'content': [{'type': 'text', 'text': i18n.text(control['reason'])+i18n.text(' 新功能未启用；原有参数未修改。')}],
+                                'structuredContent': {'values': preferences.values(path), 'activationBlocked': True, 'control': control}}
                 result = {'values': preferences.update(path, args['set'])}
             elif name == 'quota.read' and not args:
                 result = local_catalog.read_quota(path)
