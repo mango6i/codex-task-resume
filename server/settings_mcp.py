@@ -18,8 +18,8 @@ import desktop_bridge
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
-EDITOR_URI = 'ui://task-resume/settings-studio-20261018-catalog.html'
-LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261018-catalog.html'
+EDITOR_URI = 'ui://task-resume/settings-studio-20261019-recovery.html'
+LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261019-recovery.html'
 UI_FILES = {EDITOR_URI: 'settings.html', LAUNCHER_URI: 'launcher.html'}
 PROPERTIES = {
     'threshold': {'type': 'number', 'title': '剩余额度低于（%）', 'minimum': 0.01, 'maximum': 99,

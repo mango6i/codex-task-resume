@@ -153,6 +153,8 @@ def handle(path, payload, usage_provider=read_usage, now=None):
             s['lastProbeError'] = None
             s['lastQuota'] = {**q, 'observedAt': now}
             s['lastLiveUsage'] = usage
+            s['lastProbeSuccessAt'] = now
+            s['lastProbeSource'] = 'task_event'
             if q['remaining'] < s['settings']['threshold']:
                 # Capture event-observed activity, NOT invented cross-process status.
                 threads = core.runtime_threads(s, now)
@@ -178,23 +180,34 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 core.observe(s, {'observedAt': now, 'usage': fresh,
                                  'threads': core.runtime_threads(s, now)}, now)
                 pending = [i for i in s['queue'].values() if i['status'] == 'pending']
-        if event_name in {'SessionEnd', 'Interrupt'} or not pending or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
+        plan = core.schedule_plan(s, now)
+        if event_name in {'SessionEnd', 'Interrupt'} or not plan or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
             core.atomic_write(path, s)
             return None
-        due = min(i['dueAt'] for i in pending)
+        due = plan['dueAt']
         # Successfully scheduled work requires no repeated model instruction.
-        if s.get('automationId') and s.get('scheduledFor') == due and now <= due+600:
-            core.atomic_write(path, s)
-            return None
+        if (s.get('automationId') and s.get('scheduledFor')
+                and abs(s['scheduledFor']-due) <= 60):
+            import scheduling
+            try:
+                scheduling.verify(s, s['automationId'], due, now)
+                core.atomic_write(path, s)
+                return None
+            except (ValueError, OSError):
+                pass
         s['armLeaseUntil'] = now+120
         s['nextArmAfter'] = now+600
         core.atomic_write(path, s)
-        context = ('Task Resume quota detector has a persisted scheduling request. '
+        context = ('Task Resume quota detector needs a verified recovery wake, armed while quota is available. '
                    'Use the installed $quota-resume skill in arm mode. '
                    'Read state from '+json.dumps(str(path))+'. '
                    'The user enabled this workflow and configured the threshold and exact message in that state. '
                    'Use native thread tools to verify active candidates and create/update ONE native heartbeat '
-                   'targeted at the saved controllerId for the stored dueAt (or catch up if overdue). '
+                   'targeted at the saved controllerId. Run state.py schedule-plan for the original dueAt '
+                   'and guarded nominalAt, schedule that nominal time in the client timezone, then run '
+                   'state.py set-automation --id ID --due-at ORIGINAL_DUE_AT. This verifies the native actual '
+                   'next wake is not early or on tomorrow\'s cycle; if rejected, move the SAME schedule later '
+                   'and verify again. Never claim an unverified recurrence is ready. '
                    'Do not send continuation messages during this arm step. '
                    'Do not use the independent read-only server for desktop thread state. '
                    'If quota/tools prevent scheduling, leave the queue persisted and report the limitation once.')

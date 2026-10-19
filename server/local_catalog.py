@@ -9,6 +9,7 @@ import threading
 import time
 
 import state as core
+import scheduling
 
 
 class Reader:
@@ -109,11 +110,16 @@ def monitor_state(state, quota):
     pending = sum(item['status'] == 'pending' for item in (state or {}).get('queue', {}).values())
     enabled = bool(state and state['enabled'])
     scheduled = bool(state and state.get('automationId') and state.get('scheduledFor'))
+    schedule = scheduling.health(state, time.time())
     threshold = (state or {}).get('settings', {}).get('threshold', 2)
     if not state:
         phase = 'setup_required'
     elif not enabled:
         phase = 'disabled'
+    elif schedule['status'] in {'missed', 'paused'}:
+        phase = 'recovery_missed' if schedule['status'] == 'missed' else 'recovery_paused'
+    elif schedule['status'] == 'verified':
+        phase = 'recovery_scheduled'
     elif scheduled:
         phase = 'schedule_record'
     elif pending:
@@ -123,8 +129,9 @@ def monitor_state(state, quota):
     else:
         phase = 'low_quota'
     return {'initialized': bool(state), 'enabled': enabled, 'threshold': threshold,
-            'pendingCount': pending, 'scheduled': scheduled, 'phase': phase,
+            'pendingCount': pending, 'scheduled': schedule['status'] == 'verified', 'phase': phase,
             'scheduledFor': (state or {}).get('scheduledFor'),
+            'scheduleStatus': schedule['status'], 'scheduleWakeAt': schedule['wakeAt'],
             'selectedCount': len(selection(state)['threads']),
             'lastCheckedAt': (state or {}).get('lastQuota', {}).get('observedAt'),
             'lastEventAt': max([v.get('seenAt', 0) for v in (state or {}).get('runtime', {}).values()] or [0]) or None,

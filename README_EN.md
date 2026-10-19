@@ -19,7 +19,8 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
-- **Clear status:** distinguish saved targets, candidates, recent checks, task events and schedule records.
+- **Recovery wake verification:** arm while quota remains available and verify the client's actual wake rather than relying on its nominal time. Missed and paused checks are shown separately.
+- **Clear status:** distinguish saved targets, candidates, recent checks, task events and actual recovery wake times.
 - **Pre-send checks:** require recovered quota, an elapsed delay and an explicit quota failure of the exact captured work turn. Historical failures, setup requests and uncertain sends are never replayed.
 
 ## Tibo reset announcements and full-reset stops
@@ -104,7 +105,7 @@ An established native recovery schedule runs in the background; neither the cont
 | Minimum check interval | 60 seconds | Shared throttle for service and task-event quota queries |
 | Automatic continuation | Off | Explicit user activation after initialization and hook review |
 
-For example, a reset at 19:13 and a two-minute delay give a planned check at 19:15. Execution requires a valid schedule. The green confirmation's timestamp is the settings save time.
+For example, a reset at 19:13 and a two-minute delay make 19:15 the earliest eligible check. Native wakes can fire early or late, so the plugin adds a nominal timing margin and verifies that the actual wake is not before 19:15. The check may occur later; see the panel for its verified time. Unverifiable schedules are not marked ready. The green confirmation's timestamp is the settings save time.
 
 ## Language
 

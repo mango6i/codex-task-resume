@@ -393,5 +393,13 @@
   "正在加载本地对话和已保存选择…": "Loading local chats and saved selection…",
   "刷新失败，保留上次列表：": "Refresh failed; keeping the previous list: ",
   "读取失败，可重试": "Load failed · Retry",
-  "读取失败，已保存的对话选择仍然保留。": "Loading failed. Your saved chat selection is preserved."
+  "读取失败，已保存的对话选择仍然保留。": "Loading failed. Your saved chat selection is preserved.",
+  "恢复检查漏检 · 需补排程": "Recovery check missed · re-arm required",
+  "恢复检查已暂停": "Recovery check paused",
+  "恢复检查时间已核验": "Recovery wake time verified",
+  "实际检查时间": "Actual recovery wake",
+  "尚未核验": "Not verified",
+  "上次恢复检查没有在有效时间完成；旧排程不能代表续接正常。候选与发送记录保留，下次任务事件会请求补排程。": "The last recovery check did not finish at an eligible time. The old schedule does not confirm recovery. Candidates and send records are retained; the next task event requests re-arming.",
+  "原生恢复检查已暂停；监控参数保留。下一次实际任务事件会请求提前建立检查。": "The native recovery check is paused. Settings are retained; the next work event requests an advance recovery wake.",
+  "已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。": "The client actual wake was verified after the original reset plus saved delay. Only work active at low quota is captured; dispatch still requires fresh checks."
 }

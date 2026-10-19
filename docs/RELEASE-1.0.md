@@ -4,6 +4,8 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 
 ## 本次更新
 
+- 修复恢复检查提前唤醒的问题：健康额度时提前排程，保存前核对客户端实际触发时间，拒绝早于原始刷新时间加等待时长或误排到次日的检查。
+- 对话管理显示实际检查时间，并区分漏检、暂停和已核验；旧排程记录不再冒充当前检查已就绪。
 - 修复慢请求拖住对话列表的问题；加载期间保留已保存的选择，读取失败可重试，不再把未加载显示成空列表。
 - Tibo 公告关键词可手动填写，默认 reset；支持词语和短语，忽略英文大小写。换词不补发历史帖，保留逐帖逐对话去重。
 - 启用被客户端接口阻止时，开关回到真实保存状态；关键词和指令仍可独立保存。
@@ -27,6 +29,8 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 ![设置预览](https://raw.githubusercontent.com/mango6i/codex-task-resume/main/assets/settings-wide.png)
 
 ## English
+
+Fixes early recovery wakes by pre-arming during healthy quota and validating the native actual wake against the original reset plus current delay. Rejects early wakes and accidental next-day recurrences. The panel distinguishes verified, missed and paused checks and shows the actual wake time. This timing protection does not prove a full live quota-recovery cycle.
 
 Fixes chat-list loading behind slow requests. Saved selections remain visible while loading, failed refreshes retain the previous list, and retry is available without treating an unloaded list as empty.
 

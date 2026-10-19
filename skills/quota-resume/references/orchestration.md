@@ -16,6 +16,7 @@ Use absolute paths and actual process arguments. Do not interpolate titles/messa
 python <state.py> paths
 python <state.py> --state <absolute-state.json> init --account <id> --controller <id> --authorized --threshold 2 --delay-seconds 120 --check-seconds 60 --message-file <UTF-8.txt>
 python <state.py> --state <state.json> status
+python <state.py> --state <state.json> schedule-plan
 python <state.py> --state <state.json> observe --input <observation.json>
 python <state.py> --state <state.json> set-automation --id <verified-id> --due-at <Unix-seconds>
 python <state.py> --state <state.json> reserve --thread <id> --window <windowKey> --input <fresh-observation.json>
@@ -73,7 +74,9 @@ Snapshot freshness: 90 seconds maximum, 5 seconds future tolerance. Refresh befo
 
 Use native structured `automation_update`. Creation: mode=create, kind=heartbeat, destination=thread, executionEnvironment=local, targetThreadId=stored controllerId, status=ACTIVE, a durable natural-language prompt, and the host-supported recurrence representation. Do not set model/thinking overrides. On updates read the resolved record and preserve unrelated fields, notificationPolicy, name, and destination. Never write automation TOML yourself or display raw recurrence syntax to the user.
 
-Internally a temporary daily BYHOUR/BYMINUTE/BYSECOND rule targets the actual reset timestamp + configured delay in the client time zone. Verify the returned next run's date and time. After the check pause it, or reschedule it once to a later blocking-window reset. The daily rule is only a host-compatible way of scheduling a wake; it must not remain active after work is handled. An overdue queue can target the next minute and must still revalidate all conditions before sending.
+`schedule-plan` returns the original reset-plus-delay eligibility time and a guarded nominal time. Convert the nominal time to the client timezone for the temporary daily rule. The host may jitter a wake earlier, so the nominal recurrence is not proof. `set-automation` reads the native schedule metadata with SQLite mode=ro and rejects an actual next wake before eligibility, an inactive or wrong controller, or tomorrow's cycle. If rejected, move the SAME native schedule later and verify again; never write the native metadata directly. The initial five-minute margin does not replace this verification. When metadata is unavailable, report unverified timing instead of claiming a working schedule. Preserve the original candidate reset and current delay even after live usage reports the next window.
+
+Healthy-quota work events request an advance arm without creating a queue entry. Only low-quota active work is captured. A stale saved schedule no longer suppresses repair requests, and the settings page distinguishes verified, missed and paused checks. After the recovery pass pause the schedule if no blocking window remains. The daily rule is temporary, not a periodic model poll. An early wake must re-arm rather than treat its empty due list as completed work.
 
 The detector persists an arm lease to avoid several active chats scheduling the same wake. The native skill must still search matching existing automations before create, because a process can fail after creating a schedule but before saving its ID.
 
