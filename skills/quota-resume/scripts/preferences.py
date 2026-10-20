@@ -5,13 +5,9 @@ from pathlib import Path
 import sys
 import time
 import state as core
-import announcements
 
 DEFAULTS = {'threshold': 2, 'delaySeconds': 120, 'checkSeconds': 60,
-            'expiryHours': 72, 'message': '继续任务', 'limitId': 'codex',
-            'announcementEnabled': False, 'announcementCheckMinutes': 5,
-            'announcementKeyword': announcements.DEFAULT_KEYWORD,
-            'announcementMessage': announcements.DEFAULT_MESSAGE}
+            'expiryHours': 72, 'message': '继续任务', 'limitId': 'codex'}
 
 
 def preference_path(state_path):
@@ -36,60 +32,39 @@ def values(state_path):
     cfg, s = effective(state_path)
     return {'threshold': cfg['threshold'], 'delayMinutes': cfg['delaySeconds']/60,
             'checkSeconds': cfg['checkSeconds'], 'message': cfg['message'],
-            'monitoringEnabled': bool(s and s['enabled']),
-            'announcementEnabled': cfg['announcementEnabled'],
-            'announcementCheckMinutes': cfg['announcementCheckMinutes'],
-            'announcementKeyword': cfg['announcementKeyword'],
-            'announcementMessage': cfg['announcementMessage']}
+            'monitoringEnabled': bool(s and s['enabled'])}
 
 
 def update(state_path, patch, now=None):
     now = time.time() if now is None else now
-    allowed = {'threshold', 'delayMinutes', 'checkSeconds', 'message', 'monitoringEnabled',
-               'announcementEnabled', 'announcementCheckMinutes', 'announcementMessage', 'announcementKeyword'}
+    allowed = {'threshold', 'delayMinutes', 'checkSeconds', 'message', 'monitoringEnabled'}
     if not isinstance(patch, dict) or not patch or set(patch)-allowed:
         raise ValueError('设置为空或包含不支持的字段')
     converted = {}
-    if 'announcementKeyword' in patch:
-        converted['announcementKeyword'] = announcements.normalize_keyword(patch['announcementKeyword'])
-    for key, lo, hi in [('threshold', 0.01, 99), ('delayMinutes', 1, 60), ('checkSeconds', 30, 3600),
-                        ('announcementCheckMinutes', 1, 60)]:
+    for key, lo, hi in [('threshold', 0.01, 99), ('delayMinutes', 1, 60), ('checkSeconds', 30, 3600)]:
         if key in patch:
             converted[key] = core.number(patch[key], key, lo, hi)
     if 'checkSeconds' in converted and int(converted['checkSeconds']) != converted['checkSeconds']:
         raise ValueError('检查间隔必须是整数秒')
-    for message_key in ['message', 'announcementMessage']:
-        if message_key not in patch:
-            continue
-        message = patch[message_key]
+    if 'message' in patch:
+        message = patch['message']
         if not isinstance(message, str) or not message.strip() or len(message) > 12000:
             raise ValueError('自动发送内容需为 1 到 12000 字符，不能全为空格')
-        converted[message_key] = message
-    for switch in ['monitoringEnabled', 'announcementEnabled']:
-        if switch in patch and not isinstance(patch[switch], bool):
-            raise ValueError('启用开关必须是布尔值')
-    if 'announcementCheckMinutes' in converted and int(converted['announcementCheckMinutes']) != converted['announcementCheckMinutes']:
-        raise ValueError('公告检查间隔必须是整数分钟')
+        converted['message'] = message
+    if 'monitoringEnabled' in patch and not isinstance(patch['monitoringEnabled'], bool):
+        raise ValueError('启用开关必须是布尔值')
     with core.locked(state_path):
         cfg, s = effective(state_path)
-        if (patch.get('monitoringEnabled') is True or patch.get('announcementEnabled') is True) and (not s or not s.get('accountId') or not s.get('controllerId')):
+        if patch.get('monitoringEnabled') is True and (not s or not s.get('accountId') or not s.get('controllerId')):
             raise ValueError('请先在控制对话运行一次“使用 $quota-resume 初始化设置”，再开启自动续接。')
         old_delay = cfg['delaySeconds']
-        old_keyword = cfg['announcementKeyword']
-        for key in ['threshold', 'checkSeconds', 'message', 'announcementMessage', 'announcementCheckMinutes', 'announcementKeyword']:
+        for key in ['threshold', 'checkSeconds', 'message']:
             if key in converted:
                 cfg[key] = converted[key]
         if 'delayMinutes' in converted:
             cfg['delaySeconds'] = int(round(converted['delayMinutes']*60))
         if s:
-            previous_announcement = announcements.enabled(s)
-            if 'announcementEnabled' in patch:
-                cfg['announcementEnabled'] = patch['announcementEnabled']
             s['settings'] = cfg
-            if cfg['announcementKeyword'] != old_keyword:
-                announcements.change_keyword(s, now)
-            if previous_announcement != cfg['announcementEnabled']:
-                announcements.activate(s, cfg['announcementEnabled'], now)
             if cfg['delaySeconds'] != old_delay:
                 for item in s['queue'].values():
                     if item['status'] == 'pending':

@@ -18,33 +18,9 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
-- **Focused project chats:** detector hooks only record data. They inject no plugin instructions into working chats and never block task completion. Scheduling belongs to the controller.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
-- **Recovery wake verification:** arm while quota remains available and verify the client's actual wake rather than relying on its nominal time. Missed and paused checks are shown separately.
-- **Clear status:** distinguish saved targets, candidates, recent checks, task events and actual recovery wake times.
+- **Clear status:** distinguish saved targets, candidates, recent checks, task events and schedule records.
 - **Pre-send checks:** require recovered quota, an elapsed delay and an explicit quota failure of the exact captured work turn. Historical failures, setup requests and uncertain sends are never replayed.
-
-## Tibo reset announcements and full-reset stops
-
-An optional, independent workflow reads [@thsottiaux](https://x.com/thsottiaux). A new original post containing the saved keyword (default `reset`, case insensitive) requests a project review in all eligible local root chats. This scope is independent of the continuation allowlist. Historical posts, reposts and quoted text do not trigger a review; each post is sent at most once per chat.
-
-- **Custom keyword:** enter one word or phrase, matched as literal text without regular expressions. A change applies only to posts published after saving; historical posts are not replayed and send history remains deduplicated.
-- **Custom instruction:** the default is `请帮我全量检查此项目是否还有可以优化的地方，隐藏的问题，修复好`. Whitespace and newlines are preserved.
-- **Model:** GPT-6 Astra, Extra high (`gpt-6-astra` / `xhigh`). No substitute is selected if unavailable.
-- **Running chats:** deferred; waiting-for-input/approval, paused, archived, remote and subagent chats are excluded. Completed projects can receive a new review.
-- **Full quota reset:** when live five-hour and weekly usage transition to 100% remaining with reset timestamps advancing, stop all running eligible local project turns and cancel unsent reviews and old continuation candidates. The controller is excluded. Initial login with full quota does not trigger a stop. Already consumed quota cannot be refunded.
-- **Confirmation:** interruption must be verified as `interrupted`. Ambiguous sends or stops are never retried automatically; an unresolved stop blocks further review starts. To clear an unresolved stop, verify the tasks manually, then disable and re-enable the feature.
-
-**Compatibility:** this workflow requires an existing, verifiable native desktop control daemon and the requested model. The plugin checks both on each computer. It only connects through `codex app-server proxy`; it never starts a replacement server or enables remote control. If the installed client does not expose that channel, activation is blocked and the reason is displayed. This is not available on every current desktop build. Detection alone is not successful automation.
-
-The connected plugin service checks the public profile every 5 minutes by default. Quota and stop checks use the saved quota interval (60 seconds by default). Detection and interruption have polling and network latency; exact-second execution is not guaranteed. The client and device must remain running. Read-only checks use no model inference. Review turns consume the account's ordinary quota.
-
-### Enable the workflow
-
-1. Initialize one controller on this computer and trust the hooks as described below.
-2. Click **Check announcements & compatibility**. This action does not send messages or interrupt tasks.
-3. Set the keyword, review instruction and announcement interval. The keyword defaults to `reset` and can be saved independently. **Check announcements & compatibility** can preview an unsaved keyword without dispatching reviews.
-4. Enable **announcement reviews & reset stops**, at the right end of the announcement row, and save. Unsupported clients refuse activation atomically and restore the switch to its actual saved state. This is not a plugin permission toggle that can be forced on in the panel; the keyword and instruction can still be saved separately.
 
 ## Screenshots
 
@@ -96,8 +72,6 @@ Settings and targets are managed globally. Each target chat does not need separa
 
 An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Keep the client and device running. The plugin service performs read-only checks and cannot independently create native schedules or send messages; initial scheduling and later re-arming still require native assistant capabilities.
 
-“Check pre-armed only” means a controller check was scheduled in advance. It does not mean the low-quota threshold was reached or a continuation was sent. Candidate capture still requires remaining quota strictly below the saved threshold. If the controller cannot wake automatically, detection records remain persisted; another project chat is never used to perform scheduling.
-
 ## Settings
 
 | Setting | Default | Meaning |
@@ -108,7 +82,7 @@ An established native recovery schedule runs in the background; neither the cont
 | Minimum check interval | 60 seconds | Shared throttle for service and task-event quota queries |
 | Automatic continuation | Off | Explicit user activation after initialization and hook review |
 
-For example, a reset at 19:13 and a two-minute delay make 19:15 the earliest eligible check. Native wakes can fire early or late, so the plugin adds a nominal timing margin and verifies that the actual wake is not before 19:15. The check may occur later; see the panel for its verified time. Unverifiable schedules are not marked ready. The green confirmation's timestamp is the settings save time.
+For example, a reset at 19:13 and a two-minute delay give a planned check at 19:15. Execution requires a valid schedule. The green confirmation's timestamp is the settings save time.
 
 ## Language
 

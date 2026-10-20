@@ -17,7 +17,6 @@ import importlib.util
 spec = importlib.util.spec_from_file_location('skillhub_state', Path(__file__).with_name('state.py'))
 core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
-import announcements
 
 
 def read_usage(codex=None):
@@ -81,15 +80,13 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         return None
     event_name = payload.get('hook_event_name')
     sid = payload.get('session_id')
-    if (not isinstance(sid, str) or not sid or payload.get('source') in ('fork', 'subagent')
-            or payload.get('parent_thread_id') or payload.get('is_subagent') is True):
+    if not isinstance(sid, str) or not sid or payload.get('source') == 'fork':
         return None
     probe_token = None
     with core.locked(path):
         s = core.load(path)
-        if not s['enabled'] and not announcements.enabled(s):
+        if not s['enabled']:
             return None
-        announcements.on_event(s, sid, event_name, now)
         turn_id = payload.get('turn_id')
         previous = s['runtime'].get(sid, {})
         if event_name == 'UserPromptSubmit':
@@ -118,7 +115,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         elif event_name != 'SessionStart':
             return None
         # Persist activity before an async query; other events keep updating it.
-        if (s['enabled'] and now - s.get('lastProbeAt', 0) >= s['settings']['checkSeconds']
+        if (now - s.get('lastProbeAt', 0) >= s['settings']['checkSeconds']
                 and now >= s.get('probeLeaseUntil', 0)):
             probe_token = uuid.uuid4().hex
             s.update(probeToken=probe_token, probeLeaseUntil=now+25, lastProbeAt=now)
@@ -147,15 +144,12 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 return None
             if q['accountId'] != s['accountId']:
                 s['enabled'] = False
-                s['settings']['announcementEnabled'] = False
                 core.event(s, now, 'account_changed')
                 core.atomic_write(path, s)
-                return None
+                return {'systemMessage': '任务续接已暂停：登录账号改变，请重新检查配置。'}
             s['lastProbeError'] = None
             s['lastQuota'] = {**q, 'observedAt': now}
             s['lastLiveUsage'] = usage
-            s['lastProbeSuccessAt'] = now
-            s['lastProbeSource'] = 'task_event'
             if q['remaining'] < s['settings']['threshold']:
                 # Capture event-observed activity, NOT invented cross-process status.
                 threads = core.runtime_threads(s, now)
@@ -181,32 +175,31 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 core.observe(s, {'observedAt': now, 'usage': fresh,
                                  'threads': core.runtime_threads(s, now)}, now)
                 pending = [i for i in s['queue'].values() if i['status'] == 'pending']
-        plan = core.schedule_plan(s, now)
-        if event_name in {'SessionEnd', 'Interrupt'} or not plan:
+        if event_name in {'SessionEnd', 'Interrupt'} or not pending or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
             core.atomic_write(path, s)
             return None
-        due = plan['dueAt']
+        due = min(i['dueAt'] for i in pending)
         # Successfully scheduled work requires no repeated model instruction.
-        if (s.get('automationId') and s.get('scheduledFor')
-                and abs(s['scheduledFor']-due) <= 60):
-            import scheduling
-            try:
-                scheduling.verify(s, s['automationId'], due, now)
-                s['armRequest'] = None
-                core.atomic_write(path, s)
-                return None
-            except (ValueError, OSError):
-                pass
-        # A lifecycle hook is a detector, never an instruction to the task model.
-        # Persist the request for the controller; do not inject additionalContext,
-        # emit system messages, or block Stop to make another chat schedule work.
-        previous_request = s.get('armRequest') or {}
-        s['armRequest'] = {'dueAt': due, 'nominalAt': plan['nominalAt'],
-                           'requestedAt': previous_request.get('requestedAt', now)
-                               if previous_request.get('dueAt') == due else now,
-                           'controllerId': s['controllerId'], 'status': 'pending'}
+        if s.get('automationId') and s.get('scheduledFor') == due and now <= due+600:
+            core.atomic_write(path, s)
+            return None
+        s['armLeaseUntil'] = now+120
+        s['nextArmAfter'] = now+600
         core.atomic_write(path, s)
-        return None
+        context = ('Task Resume quota detector has a persisted scheduling request. '
+                   'Use the installed $quota-resume skill in arm mode. '
+                   'Read state from '+json.dumps(str(path))+'. '
+                   'The user enabled this workflow and configured the threshold and exact message in that state. '
+                   'Use native thread tools to verify active candidates and create/update ONE native heartbeat '
+                   'targeted at the saved controllerId for the stored dueAt (or catch up if overdue). '
+                   'Do not send continuation messages during this arm step. '
+                   'Do not use the independent read-only server for desktop thread state. '
+                   'If quota/tools prevent scheduling, leave the queue persisted and report the limitation once.')
+        if event_name == 'Stop':
+            return {'decision': 'block', 'reason': context}
+        if event_name in {'SessionEnd', 'Interrupt'}:
+            return None
+        return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}
 
 
 def main():

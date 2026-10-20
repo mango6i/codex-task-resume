@@ -8,7 +8,6 @@ from pathlib import Path
 import sys
 import time
 import uuid
-import scheduling
 
 VERSION = 1
 TERMINAL = {'sent', 'reserved', 'uncertain', 'completed', 'user_paused',
@@ -196,10 +195,6 @@ def start_monitoring(s, now):
             item.update(status='excluded', exclusionReason='previous_activation')
 
 
-def schedule_plan(s, now):
-    return scheduling.plan(s, now, active=any(eligible(s, t) for t in runtime_threads(s, now)))
-
-
 def expire(s, now):
     changes = []
     for item in s['queue'].values():
@@ -217,7 +212,6 @@ def observe(s, obs, now):
     q = canonical_quota(s, q)
     if q['accountId'] != s['accountId']:
         s['enabled'] = False
-        s['settings']['announcementEnabled'] = False
         event(s, now, 'account_changed')
         return {'enabled': False, 'due': [], 'scheduleMode': 'disabled',
                 'nextWakeAt': None, 'reason': 'account_changed'}
@@ -307,7 +301,6 @@ def main():
     init.add_argument('--message-file', type=Path)
     subs.add_parser('status')
     subs.add_parser('paths')
-    subs.add_parser('schedule-plan')
     subs.add_parser('disable')
     observe_p = subs.add_parser('observe')
     observe_p.add_argument('--input', type=Path, required=True)
@@ -352,11 +345,7 @@ def main():
                 if not isinstance(saved, dict):
                     raise ValueError('Invalid saved preferences')
                 cfg.update({k: v for k, v in saved.items() if k in {
-                    'threshold', 'delaySeconds', 'checkSeconds', 'expiryHours', 'message', 'limitId',
-                    'announcementMessage', 'announcementCheckMinutes', 'announcementKeyword'}})
-            if 'announcementKeyword' in cfg:
-                import announcements
-                cfg['announcementKeyword'] = announcements.normalize_keyword(cfg['announcementKeyword'])
+                    'threshold', 'delaySeconds', 'checkSeconds', 'expiryHours', 'message', 'limitId'}})
             defaults = {'threshold': 2, 'delaySeconds': 120, 'checkSeconds': 60,
                         'expiryHours': 72, 'message': '继续任务', 'limitId': args.limit_id}
             for key, value in defaults.items():
@@ -401,29 +390,18 @@ def main():
             s = load(path)
             if args.command == 'status':
                 result = s
-            elif args.command == 'schedule-plan':
-                result = {'plan': schedule_plan(s, now), 'schedule': scheduling.health(s, now)}
             elif args.command == 'disable':
                 s['enabled'] = False
-                if s['settings'].get('announcementEnabled'):
-                    import announcements
-                    s['settings']['announcementEnabled'] = False
-                    announcements.activate(s, False, now)
                 event(s, now, 'disabled')
                 result = {'enabled': False, 'automationId': s.get('automationId')}
             elif args.command == 'set-automation':
                 if not s['enabled']:
                     raise ValueError('Monitor is disabled')
                 number(args.due_at, 'due-at', 1)
-                timing = scheduling.verify(s, args.id, args.due_at, now)
                 s['automationId'] = args.id
                 s['scheduledFor'] = args.due_at
-                s['scheduleWakeAt'] = timing['wakeAt']
-                s['scheduleVerifiedAt'] = timing['verifiedAt']
-                s['armRequest'] = None
                 s['armLeaseUntil'] = 0
-                event(s, now, 'schedule_verified', dueAt=args.due_at, wakeAt=timing['wakeAt'])
-                result = {'automationId': args.id, 'scheduledFor': args.due_at, **timing}
+                result = {'automationId': args.id, 'scheduledFor': args.due_at}
             elif args.command in {'observe', 'reserve'}:
                 obs = read_json(args.input)
                 result = observe(s, obs, now)
@@ -453,7 +431,7 @@ def main():
                     if item['threadId'] == args.thread and item['status'] == 'pending':
                         item['status'] = 'excluded'
                 result = {'excluded': s['excluded']}
-        if args.command not in {'status', 'schedule-plan'}:
+        if args.command != 'status':
             atomic_write(path, s)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
 

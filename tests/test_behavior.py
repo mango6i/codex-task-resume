@@ -123,8 +123,7 @@ class Behavior(unittest.TestCase):
             payload = {'hook_event_name': 'UserPromptSubmit', 'session_id': 'task',
                        'turn_id': 'work-turn', 'prompt': 'Finish the requested feature'}
             result = hook.handle(path, payload, provider, 1000)
-            self.assertIsNone(result)
-            self.assertEqual(core.load(path)['armRequest']['controllerId'], 'controller')
+            self.assertIn('hookSpecificOutput', result)
             self.assertIsNone(hook.handle(path, {**payload, 'hook_event_name': 'PostToolUse'}, provider, 1001))
             self.assertEqual(len(calls), 1)
             hook.handle(path, {'hook_event_name': 'Interrupt', 'session_id': 'task', 'turn_id': 'work-turn'}, provider, 1002)

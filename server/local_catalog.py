@@ -9,7 +9,6 @@ import threading
 import time
 
 import state as core
-import scheduling
 
 
 class Reader:
@@ -110,16 +109,11 @@ def monitor_state(state, quota):
     pending = sum(item['status'] == 'pending' for item in (state or {}).get('queue', {}).values())
     enabled = bool(state and state['enabled'])
     scheduled = bool(state and state.get('automationId') and state.get('scheduledFor'))
-    schedule = scheduling.health(state, time.time())
     threshold = (state or {}).get('settings', {}).get('threshold', 2)
     if not state:
         phase = 'setup_required'
     elif not enabled:
         phase = 'disabled'
-    elif schedule['status'] in {'missed', 'paused'}:
-        phase = 'recovery_missed' if schedule['status'] == 'missed' else 'recovery_paused'
-    elif schedule['status'] == 'verified':
-        phase = 'recovery_prearmed' if pending == 0 and quota['remaining'] >= threshold else 'recovery_scheduled'
     elif scheduled:
         phase = 'schedule_record'
     elif pending:
@@ -129,9 +123,8 @@ def monitor_state(state, quota):
     else:
         phase = 'low_quota'
     return {'initialized': bool(state), 'enabled': enabled, 'threshold': threshold,
-            'pendingCount': pending, 'scheduled': schedule['status'] == 'verified', 'phase': phase,
+            'pendingCount': pending, 'scheduled': scheduled, 'phase': phase,
             'scheduledFor': (state or {}).get('scheduledFor'),
-            'scheduleStatus': schedule['status'], 'scheduleWakeAt': schedule['wakeAt'],
             'selectedCount': len(selection(state)['threads']),
             'lastCheckedAt': (state or {}).get('lastQuota', {}).get('observedAt'),
             'lastEventAt': max([v.get('seenAt', 0) for v in (state or {}).get('runtime', {}).values()] or [0]) or None,
@@ -171,9 +164,7 @@ def read_quota(path, reader_factory=Reader):
 
 def list_threads(path, cursor=None, reader_factory=Reader):
     state = saved_state(path)
-    connection = reader_factory()
-    connection.total_timeout = 12
-    with connection as reader:
+    with reader_factory() as reader:
         usage = reader.call('account/rateLimits/read', {})
         quota = core.quota(usage, (state or {}).get('settings', {}).get('limitId', 'codex'))
         if state and quota['accountId'] != state['accountId']:
@@ -199,9 +190,7 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
     before = saved_state(path)
     if not before or not before.get('accountId') or not before.get('controllerId'):
         raise ValueError('全局控制尚未初始化。只需初始化一个控制对话，不需要逐个对话设置。')
-    connection = reader_factory()
-    connection.total_timeout = 25
-    with connection as reader:
+    with reader_factory() as reader:
         usage = reader.call('account/rateLimits/read', {})
         quota = core.quota(usage, before['settings']['limitId'])
         if quota['accountId'] != before['accountId']:

@@ -79,8 +79,7 @@ html,body{height:100%;overflow:hidden}
  .app-header .version{margin-left:auto}
 }
 
-.brandmark{background:transparent;box-shadow:none;overflow:hidden}.brandmark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:9px}.steps{align-items:start}
-</style>
+.brandmark{background:transparent;box-shadow:none;overflow:hidden}.brandmark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:9px}.steps{align-items:start}</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -107,15 +106,6 @@ html,body{height:100%;overflow:hidden}
 </div>
 <style>
 .scope-option{display:flex;align-items:flex-start;gap:9px;padding:9px 0;font-size:12px;cursor:pointer}.scope-option input{accent-color:var(--accent);margin-top:3px}.task-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.task-toolbar input[type=search]{min-width:0;flex:1;border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--bg);color:inherit;font:inherit}.task-list{margin-top:15px;border:1px solid var(--border);border-radius:12px;overflow:hidden}.task-row{display:flex;align-items:center;gap:12px;padding:15px;cursor:pointer}.task-row+.task-row{border-top:1px solid var(--border)}.task-row>input{accent-color:var(--accent);width:16px;height:16px;flex-shrink:0}.task-row>div{min-width:0;flex:1}.task-row strong{font-size:13px;display:block;overflow-wrap:anywhere}.task-row small{display:block;color:var(--muted);font-size:10px;overflow-wrap:anywhere;margin-top:4px}.task-badge{font-size:10px;white-space:nowrap;color:var(--muted);background:var(--soft);padding:4px 7px;border-radius:6px}#task-monitor,#task-status{font-size:12px;line-height:1.85;color:var(--muted)}@media(max-width:480px){.task-toolbar{flex-wrap:wrap}.task-row{flex-wrap:wrap}.task-badge{margin-left:28px}.task-toolbar input[type=search]{flex-basis:100%}}
-/* The activation control follows each workflow in its own trailing column. */
-#fields .field .input{max-width:128px}#fields>.card:first-child{grid-column:auto}
-#fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) clamp(190px,20vw,240px);gap:12px}#fields>.card{grid-column:auto;margin:0;min-width:0}#fields>.runtime-controls{grid-column:1/-1}#fields .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}#fields .field{display:block}#fields .field label{margin-bottom:5px}#fields textarea{height:108px;min-height:80px;font-size:13px}#fields .announcement-prompt textarea{height:99px}.source-line,.model-line{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.source-line a{font-weight:650;font-size:14px;color:var(--accent-text);text-decoration:none}.source-line a:hover{text-decoration:underline}.keyword-chip{background:var(--soft);border:1px solid var(--border);border-radius:6px;padding:1px 8px;font:12px Consolas,monospace;color:var(--muted)}.announcement-interval{margin-top:10px;gap:12px}.announcement-interval .input{width:110px;flex-shrink:0}.announcement-status{margin:8px 0 4px;background:var(--soft);border-radius:7px;padding:7px 9px;font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere;max-height:76px;overflow:auto}.announcement-status[data-warning=true]{color:var(--amber)}.model-line{justify-content:space-between;margin-top:9px;font-size:11px;color:var(--muted)}.model-chip{display:inline-flex;align-items:center;gap:9px;padding:4px 9px;border-radius:7px;background:var(--accent-soft);color:var(--accent-text);font-size:12px}.model-chip b{font-size:11px;background:var(--surface);border-radius:5px;padding:0 5px}.runtime-controls .interval{gap:20px}.runtime-controls .interval .input{width:110px;flex-shrink:0}.runtime-controls .note{margin:9px 0}.switches-last{display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid var(--border);padding-top:11px}.switches-last>.control-row{gap:14px}.switches-last .control-label{font-size:13px}
-@media(max-width:760px){#fields{grid-template-columns:minmax(0,1fr)}#fields .two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.switches-last{grid-template-columns:1fr;gap:13px}.runtime-controls .interval{align-items:flex-start}#fields .runtime-controls{grid-column:auto}}
-@media(max-width:420px){#fields .two{grid-template-columns:minmax(0,1fr)}.section-head{flex-wrap:wrap}.runtime-controls .interval{gap:10px}.switches-last .control-label{font-size:12px}}
-.announcement-keyword{display:flex;align-items:center;gap:12px;margin-top:12px}.announcement-keyword label{font-size:12px;flex-shrink:0}.announcement-keyword input{min-width:0;width:100%;border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font-size:13px}.announcement-keyword input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}#announcement-enable-state{display:block}#announcement-enable-state[data-warning=true]{color:var(--amber)}
-.feature-toggle{display:flex;flex-direction:column;justify-content:center;gap:12px;padding:18px 20px}.toggle-eyebrow{font-size:12px;color:var(--muted)}.feature-toggle .control-row{display:flex;flex-direction:column-reverse;align-items:flex-start;gap:18px}.feature-toggle .control-label{font-size:15px;line-height:1.65}.feature-toggle .control-desc{display:none}.feature-toggle .hint{font-size:12px;color:var(--muted);margin:0;line-height:1.65}.feature-toggle .switch{width:56px;height:32px}.feature-toggle .track{width:56px;height:32px}.feature-toggle .track:after{width:26px;height:26px}.feature-toggle .switch input:checked+.track:after{transform:translateX(24px)}.feature-toggle .control-row>div{min-width:0}.feature-toggle .control-row label{overflow-wrap:anywhere}
-@media(max-width:950px) and (min-width:761px){#fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 180px}#fields .two{grid-template-columns:minmax(0,1fr)}.feature-toggle{padding:16px}.feature-toggle .control-label{font-size:14px}}
-@media(max-width:760px){#fields{grid-template-columns:minmax(0,1fr)}.feature-toggle{gap:8px;padding:14px}.feature-toggle .control-row{flex-direction:row;align-items:center;justify-content:space-between;gap:20px}.feature-toggle .toggle-eyebrow{display:none}.feature-toggle .control-desc{display:block}.feature-toggle .hint{display:none}.feature-toggle .control-label{font-size:14px}}
 </style>
 <nav class="tabs" role="tablist" aria-label="设置与帮助">
  <button type="button" class="tab" id="tab-settings" role="tab" aria-selected="true" aria-controls="panel-settings" tabindex="0"><svg class="ico" aria-hidden="true"><use href="#tune"/></svg>续接设置</button>
@@ -143,29 +133,12 @@ html,body{height:100%;overflow:hidden}
       <div class="editor-box"><textarea id="message" maxlength="12000" required spellcheck="false" placeholder="继续任务" aria-labelledby="message-label" aria-describedby="message-help"></textarea><div class="editor-foot"><span><svg class="ico" aria-hidden="true"><use href="#resume"/></svg>支持多行，保留原文与换行</span><span id="message-count">0 / 12,000</span></div></div>
       <p class="hint" id="message-help">只发给被记录且经复查确认未完成的原对话。</p>
      </section>
-     <section class="card feature-toggle resume-toggle"><span class="toggle-eyebrow">额度续接</span><div class="control-row"><div><label class="control-label" for="monitoringEnabled">开启自动续接</label><p class="control-desc" id="enable-help">低额度时记录任务，刷新后续接未完成工作。</p></div><label class="switch"><input id="monitoringEnabled" type="checkbox" role="switch" aria-describedby="enable-help"><span class="track" aria-hidden="true"></span></label></div><p class="hint">仅续接符合条件的未完成任务</p></section>
-     <section class="card announcement-source">
-      <div class="section-head"><span class="number">03</span><h2>Tibo 重置公告</h2><span class="meta">新原创帖 · 去重触发</span></div>
-      <div class="source-line"><a href="https://x.com/thsottiaux" target="_blank" rel="noopener noreferrer" id="announcement-home">@thsottiaux ↗</a></div>
-      <p class="hint">仅识别启用后发布的新原创帖。同一帖子每个对话只发送一次，转发、引用和旧帖不触发。</p>
-      <div class="announcement-keyword"><label class="control-label" for="announcementKeyword">公告关键词</label><input id="announcementKeyword" type="text" maxlength="100" required placeholder="reset" spellcheck="false" aria-describedby="keyword-help"></div>
-      <p class="hint" id="keyword-help">正文包含此文字即匹配，忽略英文大小写。默认 reset。</p>
-      <div class="control-row announcement-interval"><label class="control-label" for="announcementCheckMinutes">公告检查间隔</label><div class="input"><input id="announcementCheckMinutes" type="number" min="1" max="60" step="1" required><span class="unit">分钟</span></div></div>
-      <div class="announcement-status" id="announcement-status" role="status" aria-live="polite">尚未检查公告与客户端兼容性</div>
-      <button type="button" class="text-action" id="announcement-check">检查公告与兼容性</button>
-     </section>
-     <section class="card announcement-prompt">
-      <div class="section-head"><span class="number">04</span><h2 id="announcement-message-label">公告触发后的项目检查</h2><button type="button" class="text-action" id="default-announcement-message" style="margin-left:auto">填入默认内容</button></div>
-      <div class="editor-box"><textarea id="announcementMessage" maxlength="12000" required spellcheck="false" aria-labelledby="announcement-message-label"></textarea><div class="editor-foot"><span>全部符合条件的本地项目对话</span><span id="announcement-message-count">0 / 12,000</span></div></div>
-      <div class="model-line"><span>执行模型</span><span class="model-chip">GPT-6 Astra <b>极高</b></span></div>
-      <p class="hint">运行中的任务稍后处理；等待输入或批准、暂停、归档和控制对话会跳过。已完成的项目可以发起新一轮检查。</p>
-     </section>
-     <section class="card feature-toggle announcement-toggle"><span class="toggle-eyebrow">公告与停任务</span><div class="control-row"><div><label class="control-label" for="announcementEnabled">开启公告检查与重置停任务</label><p class="control-desc" id="announcement-enable-help">新帖匹配关键词时检查全项目；额度全部重置时停止运行项目。</p></div><label class="switch"><input id="announcementEnabled" type="checkbox" role="switch" aria-describedby="announcement-enable-help announcement-enable-state"><span class="track" aria-hidden="true"></span></label></div><p class="hint" id="announcement-enable-state" role="status">需通过本机接口兼容性检查</p></section>
-     <section class="card runtime-controls">
-      <div class="section-head"><span class="number">05</span><h2>运行与检测</h2><span class="meta">保存后生效</span></div>
-      <div class="control-row interval"><div><label class="control-label" for="checkSeconds">额度检查与停任务间隔</label><p class="control-desc">五小时和每周额度同时恢复 100% 后，停止仍运行的本地项目，取消本轮尚未发送的检查。</p></div><div class="input"><input id="checkSeconds" type="number" min="30" max="3600" step="1" required aria-describedby="interval-help"><span class="unit">秒</span></div></div>
-      <div class="note" id="interval-help"><svg class="ico" aria-hidden="true"><use href="#info"/></svg><p>只读检测不调用模型。公告群发与重置停任务必须通过本机原生控制通道核实，接口不可用时阻止启用。停止会打断当前工作，已产生的额度消耗不会退回。</p></div>
-
+     <section class="card">
+      <div class="section-head"><span class="number">03</span><h2>运行与检测</h2><span class="meta">保存后生效</span></div>
+      <div class="control-row"><div><label class="control-label" for="monitoringEnabled">开启自动续接</label><p class="control-desc" id="enable-help">需先初始化控制对话，并信任本插件的检测脚本。</p></div><label class="switch"><input id="monitoringEnabled" type="checkbox" role="switch" aria-describedby="enable-help"><span class="track" aria-hidden="true"></span></label></div>
+      <div class="divider"></div>
+      <div class="control-row interval"><div><label class="control-label" for="checkSeconds">检测最短间隔</label><p class="control-desc">合并间隔内的任务事件，避免重复查询。</p></div><div class="input"><input id="checkSeconds" type="number" min="30" max="3600" step="1" required aria-describedby="interval-help"><span class="unit">秒</span></div></div>
+      <div class="note" id="interval-help"><svg class="ico" aria-hidden="true"><use href="#info"/></svg><p>插件服务连接期间定期只读检查额度，空闲对话也会检测；任务事件另行记录活动。只读检测不调用模型，恢复检查和任务执行会使用正常额度。</p></div>
      </section>
     </fieldset>
    </form>
@@ -238,8 +211,7 @@ html,body{height:100%;overflow:hidden}
 <script>
 const {t}=window.TaskResumeI18n;window.TaskResumeI18n.staticText(document);
 (()=>{
-const ids=['threshold','delayMinutes','message','checkSeconds','announcementCheckMinutes','announcementKeyword','announcementMessage','monitoringEnabled','announcementEnabled'];
-const switches=new Set(['monitoringEnabled','announcementEnabled']),texts=new Set(['message','announcementMessage','announcementKeyword']);
+const ids=['threshold','delayMinutes','message','checkSeconds','monitoringEnabled'];
 const el=id=>document.getElementById(id),pending=new Map();
 let nextId=0,origin='*',saved=null,ready=false,busy=false,loading=false,initialized=false,lastSavedAt='',feedbackTimer,liveQuota=null,quotaBusy=false;
 const timeText=stamp=>Number.isFinite(stamp)?new Date(stamp*1000).toLocaleTimeString(window.TaskResumeI18n.language,{hour:'2-digit',minute:'2-digit',hour12:false}):t('暂未获取');
@@ -254,7 +226,7 @@ el('project-home').addEventListener('click',async event=>{
  else if(window.parent!==window){event.preventDefault();try{const result=await request('ui/open-link',{url:href});if(result?.isError)throw new Error(t('客户端未能打开链接'));}catch(error){feedback(t('项目主页未打开'),t('请复制地址 https://github.com/mango6i/codex-task-resume 到浏览器。')+(error?.message||''),'error');}}
 });
 function setStatus(text,tone=''){el('status').textContent=text;el('status').dataset.tone=tone;el('footer').dataset.tone=tone;el('status-icon').setAttribute('href',busy||loading?'#spinner':tone==='error'?'#info':'#check');el('footer').classList.toggle('loading',loading);el('footer').classList.toggle('saving',busy);}
-function values(){return Object.fromEntries(ids.map(id=>[id,switches.has(id)?el(id).checked:texts.has(id)?el(id).value:Number(el(id).value)]));}
+function values(){return Object.fromEntries(ids.map(id=>[id,id==='monitoringEnabled'?el(id).checked:id==='message'?el(id).value:Number(el(id).value)]));}
 function changes(){const current=values();return Object.fromEntries(ids.filter(id=>saved&&current[id]!==saved[id]).map(id=>[id,current[id]]));}
 function preview(){
  if(!saved)return;
@@ -265,13 +237,12 @@ function preview(){
  el('preview-tag').textContent=count?t('未保存预览'):t('已保存参数');
  el('save-state').textContent=count?count+t(' 项待保存'):lastSavedAt?t('已保存 ')+lastSavedAt:t('参数已载入');
  el('message-count').textContent=Array.from(el('message').value).length.toLocaleString('en-US')+' / 12,000';
- el('announcement-message-count').textContent=Array.from(el('announcementMessage').value).length.toLocaleString('en-US')+' / 12,000';
  document.querySelectorAll('[data-threshold]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.threshold)===v.threshold)));
  document.querySelectorAll('[data-delay]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.delay)===v.delayMinutes)));
 }
 function renderQuota(){
  const q=liveQuota?.quota,m=liveQuota?.monitor,valid=q&&Number.isFinite(q.resetAt),delay=saved?values().delayMinutes:0;
- const reset=valid?timeText(q.resetAt):t('暂未获取'),due=valid&&Number.isFinite(delay)?timeText(m?.scheduleWakeAt??q.resetAt+Math.round(delay*60)):t('暂未获取');
+ const reset=valid?timeText(q.resetAt):t('暂未获取'),due=valid&&Number.isFinite(delay)?timeText(q.resetAt+Math.round(delay*60)):t('暂未获取');
  el('live-quota').textContent=q?q.remaining+'%':'—';el('live-reset').textContent=reset;el('live-due').textContent=due;
  el('preview-reset').textContent=reset;el('example-time').textContent=due;
  const note=valid?t('实际刷新 {reset} · 预计复查 {due}（{state}）',{reset,due,state:t(m?.scheduled?'已记录排程':'尚未排程')}):t('暂未获取');
@@ -286,39 +257,23 @@ async function refreshQuota(){
 el('quota-refresh').addEventListener('click',refreshQuota);
 setInterval(()=>{if(initialized&&!document.hidden)refreshQuota();},60000);
 function controls(){const dirty=!!saved&&Object.keys(changes()).length>0;el('save').disabled=!ready||busy||!dirty;el('reset').disabled=!ready||busy||!dirty;el('fields').disabled=!ready||busy;el('settings').setAttribute('aria-busy',String(busy||loading));const confirmed=ready&&!busy&&!dirty&&!!lastSavedAt;el('save').dataset.saved=String(confirmed);el('save-label').textContent=busy?t('正在保存…'):confirmed?t('已保存'):t('保存设置');preview();}
-function apply(v){if(!v||ids.some(id=>!(id in v)))throw new Error(t('设置数据不完整，未修改已保存参数。'));saved={...v};for(const id of ids){if(switches.has(id))el(id).checked=!!v[id];else el(id).value=v[id];}ready=true;controls();}
-function unpack(result){if(result?.isError){const error=new Error(result.content?.find(x=>x.type==='text')?.text||t('保存失败'));error.details=result.structuredContent;throw error;}const data=result?.structuredContent;if(data?.selection)seedTaskSelection(data.selection);if(!data?.values)throw new Error(t('客户端没有返回有效设置。'));const setup=result?._meta?.['skillhub/setup'];if(setup){el('setup-text').textContent=setup.configured?t('控制对话已初始化 · 脚本信任请在客户端确认'):t('尚未初始化控制对话');el('setup-state').dataset.state=setup.configured?'configured':'needed';}else{el('setup-text').textContent=t('脚本信任与初始化请按指南确认');}return data.values;}
-async function call(name,args){return request('tools/call',{name,arguments:args},['quota.read','announcements.check','settings.update','tasks.list','tasks.select'].includes(name)?35000:15000);}
-async function announcementStatus(check=false){
- const button=el('announcement-check');button.disabled=true;
- if(check)el('announcement-status').textContent=t('正在读取公告并核实本机接口…');
- try{const response=await call(check?'announcements.check':'announcements.status',check?{keyword:el('announcementKeyword').value}:{});if(response.isError)throw new Error(response.content?.[0]?.text||t('读取失败'));const a=response.structuredContent;announcementControl(a.control);const latest=a.previewPost||a.lastPost;const parts=[a.enabled?t('公告监控已开启'):t('公告监控已关闭')];if(a.lastSuccessAt)parts.push(t('最近检查 ')+timeText(a.lastSuccessAt));if(latest)parts.push(latest.text);if(Number.isInteger(a.previewMatchCount))parts.push(t('关键词“{keyword}”：最近帖子匹配 {count} 条，仅预览，不会补发旧帖。',{keyword:a.previewKeyword,count:a.previewMatchCount}));if(a.pendingEvents)parts.push(t('待处理公告 ')+a.pendingEvents);if(a.sent)parts.push(t('已发送 ')+a.sent);if(a.uncertain)parts.push(t('有 {count} 条发送未确认，不会自动重发。',{count:a.uncertain}));if(a.control)parts.push(t(a.control.reason));if(a.lastError)parts.push(t(a.lastError));if(a.resetStop){const labels={pending:'等待停止任务',done:'停止检查已完成',needs_attention:'停止未确认，请手动检查任务'};parts.push(t('重置停任务：')+t(labels[a.resetStop.status]||a.resetStop.status));const stopped=Object.values(a.resetStop.targets||{}).filter(x=>x.status==='stopped').length;if(stopped)parts.push(t('已确认停止 {count} 个任务',{count:stopped}));}el('announcement-status').textContent=parts.join(' · ');el('announcement-status').dataset.warning=String(!!a.lastError||a.control?.available===false||!!a.uncertain||a.resetStop?.status==='needs_attention');}
- catch(error){el('announcement-status').textContent=t('检查失败：')+t(error.message);el('announcement-status').dataset.warning='true';}
- finally{button.disabled=false;}
-}
-el('announcement-check').addEventListener('click',()=>announcementStatus(true));
-function announcementControl(control){if(!control)return;const unavailable=control.available===false;el('announcement-enable-state').textContent=t(unavailable?'本机控制接口暂不可用，无法开启。关键词和指令可单独保存。':'原生控制通道与模型已核实。');el('announcement-enable-state').dataset.warning=String(unavailable);}
-el('announcement-home').addEventListener('click',async event=>{if(window.parent===window)return;event.preventDefault();try{await request('ui/open-link',{url:'https://x.com/thsottiaux'});}catch{feedback(t('来源页面未打开'),'https://x.com/thsottiaux','error');}});
-let taskLoaded=false,taskBusy=false,taskSelectionSeeded=false,taskLoadError='',taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
-const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('存在排程记录 · 待核验'),recovery_missed:t('恢复检查漏检 · 需补排程'),recovery_paused:t('恢复检查已暂停'),recovery_scheduled:t('恢复检查时间已核验'),recovery_prearmed:t('仅预排检查 · 未触发续接')};
+function apply(v){if(!v||ids.some(id=>!(id in v)))throw new Error(t('设置数据不完整，未修改已保存参数。'));saved={...v};for(const id of ids){if(id==='monitoringEnabled')el(id).checked=!!v[id];else el(id).value=v[id];}ready=true;controls();}
+function unpack(result){if(result?.isError)throw new Error(result.content?.find(x=>x.type==='text')?.text||t('保存失败'));const data=result?.structuredContent;if(!data?.values)throw new Error(t('客户端没有返回有效设置。'));const setup=result?._meta?.['skillhub/setup'];if(setup){el('setup-text').textContent=setup.configured?t('控制对话已初始化 · 脚本信任请在客户端确认'):t('尚未初始化控制对话');el('setup-state').dataset.state=setup.configured?'configured':'needed';}else{el('setup-text').textContent=t('脚本信任与初始化请按指南确认');}return data.values;}
+async function call(name,args){return request('tools/call',{name,arguments:args},name==='quota.read'?30000:15000);}
+let taskLoaded=false,taskBusy=false,taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
+const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('存在排程记录 · 待核验')};
 function renderMonitor(data){
  const monitor=data.monitor,quota=data.quota,phase=monitor.phase;
  const reset=timeText(quota.resetAt);liveQuota=data;renderQuota();
- el('task-phase').textContent=taskPhases[phase]||t('状态待核验');el('task-phase').dataset.warning=String(['pending_unscheduled','low_quota','setup_required','recovery_missed','recovery_paused'].includes(phase));
+ el('task-phase').textContent=taskPhases[phase]||t('状态待核验');el('task-phase').dataset.warning=String(['pending_unscheduled','low_quota','setup_required'].includes(phase));
  el('task-monitor').replaceChildren();
- for(const [label,value] of [[t('剩余额度'),quota.remaining+'%'],[t('刷新时间'),reset],[t('触发阈值'),'< '+monitor.threshold+'%'],[t('已选对话'),monitor.selectedCount??taskSaved.size],[t('待续接'),monitor.pendingCount+t(' 个')],[t('最近成功检测'),monitor.lastCheckedAt?timeText(monitor.lastCheckedAt):t('暂无记录')],[t('检测服务'),t(monitor.serviceConnected?'服务已连接':'尚无服务心跳')],[t('最近任务事件'),monitor.lastEventAt?timeText(monitor.lastEventAt):t('暂无记录')],[t('实际检查时间'),monitor.scheduleWakeAt?timeText(monitor.scheduleWakeAt):t('尚未核验')]]){const item=document.createElement('div'),caption=document.createElement('small'),number=document.createElement('strong');caption.textContent=label;number.textContent=value;item.append(caption,number);el('task-monitor').append(item);}
+ for(const [label,value] of [[t('剩余额度'),quota.remaining+'%'],[t('刷新时间'),reset],[t('触发阈值'),'< '+monitor.threshold+'%'],[t('已选对话'),monitor.selectedCount??taskSaved.size],[t('待续接'),monitor.pendingCount+t(' 个')],[t('最近成功检测'),monitor.lastCheckedAt?timeText(monitor.lastCheckedAt):t('暂无记录')],[t('检测服务'),t(monitor.serviceConnected?'服务已连接':'尚无服务心跳')],[t('最近任务事件'),monitor.lastEventAt?timeText(monitor.lastEventAt):t('暂无记录')],[t('续接排程'),monitor.scheduledFor?timeText(monitor.scheduledFor):t('尚未排程')]]){const item=document.createElement('div'),caption=document.createElement('small'),number=document.createElement('strong');caption.textContent=label;number.textContent=value;item.append(caption,number);el('task-monitor').append(item);}
  const detail={setup_required:t('先初始化一个全局控制对话；无需在每个目标对话发送设置指令。'),disabled:t('参数和对话选择已保留。监控开关关闭，后续不会自动发送。'),waiting_threshold:t('当前额度尚未低于 ')+monitor.threshold+t('%，暂不入队。只有低额度时实际运行的任务才会记录；勾选的空闲对话不会入队。目前没有恢复排程。'),low_quota:t('额度已低于阈值，但尚无待续接候选。需确认目标范围与检测脚本；目前没有恢复排程。'),pending_unscheduled:t('已有 ')+monitor.pendingCount+t(' 个候选，尚未安排恢复检查，不能保证到时自动续接。'),schedule_record:t('仅发现已保存的排程记录，尚未核验客户端是否启用；这不等于保证到时自动发送。')};
- Object.assign(detail,{recovery_missed:t('上次恢复检查没有在有效时间完成；候选与发送记录保留，需由控制端补排程。'),recovery_paused:t('原生恢复检查已暂停；监控参数保留。目标任务只记录检测数据，排程由控制端处理。'),recovery_scheduled:t('已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。'),recovery_prearmed:t('这只是控制端的预排检查，尚未触发任务续接；目标对话不会收到设置或排程指令。')});
  el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'');
  return taskPhases[phase]||t('状态待核验');
 }
-function seedTaskSelection(selection){
- if(taskLoaded||taskSelectionSeeded||!selection||!Array.isArray(selection.threadIds)||!['automatic','selected'].includes(selection.mode))return;
- taskChosen=new Set(selection.threadIds);taskSaved=new Set(taskChosen);taskSavedMode=selection.mode;
- document.querySelector('input[name="task-mode"][value="'+taskSavedMode+'"]').checked=true;taskSelectionSeeded=true;taskControls();
-}
 function taskMode(){return document.querySelector('input[name="task-mode"]:checked').value;}
-function taskControls(){el('task-select-all').disabled=taskBusy||!taskLoaded||!visibleTasks().some(x=>x.selectable);el('task-clear').disabled=taskBusy||!taskChosen.size;const dirty=taskMode()!==taskSavedMode||taskChosen.size!==taskSaved.size||[...taskChosen].some(id=>!taskSaved.has(id));el('task-save').disabled=!taskLoaded||taskBusy||!dirty;const confirmed=taskConfirmed&&!dirty&&!taskBusy;el('task-save').dataset.saved=String(confirmed);el('task-save').textContent=taskBusy?t('正在处理…'):confirmed?t('已保存选择'):t('保存选择');el('task-refresh').disabled=taskBusy;el('task-more').disabled=taskBusy;document.querySelectorAll('input[name="task-mode"]').forEach(x=>x.disabled=taskBusy);el('task-list').setAttribute('aria-busy',String(taskBusy));el('task-count').textContent=t('已选 ')+taskChosen.size+(taskLoaded?t(' 个 · 已读取 ')+taskRows.length+t(' 个'):t(' 个 · ')+(taskBusy?t('正在读取对话…'):t('对话列表尚未加载')))+(dirty?t(' · 有未保存的选择'):'');}
+function taskControls(){el('task-select-all').disabled=taskBusy||!taskLoaded||!visibleTasks().some(x=>x.selectable);el('task-clear').disabled=taskBusy||!taskChosen.size;const dirty=taskMode()!==taskSavedMode||taskChosen.size!==taskSaved.size||[...taskChosen].some(id=>!taskSaved.has(id));el('task-save').disabled=!taskLoaded||taskBusy||!dirty;const confirmed=taskConfirmed&&!dirty&&!taskBusy;el('task-save').dataset.saved=String(confirmed);el('task-save').textContent=taskBusy?t('正在处理…'):confirmed?t('已保存选择'):t('保存选择');el('task-refresh').disabled=taskBusy;el('task-more').disabled=taskBusy;el('task-count').textContent=t('已选 ')+taskChosen.size+t(' 个 · 已读取 ')+taskRows.length+t(' 个')+(dirty?t(' · 有未保存的选择'):'');}
 function visibleTasks(){const query=el('task-search').value.toLowerCase();return taskRows.filter(t=>(t.title+' '+t.project).toLowerCase().includes(query));}
 function taskRender(){
  const query=el('task-search').value.toLowerCase();const list=el('task-list');list.replaceChildren();
@@ -328,19 +283,18 @@ function taskRender(){
   const text=document.createElement('div');const title=document.createElement('strong');title.textContent=item.title;const project=document.createElement('small');project.textContent=item.project||t('无本地项目');text.append(title,project);
   const status=document.createElement('span');status.className='task-badge';status.textContent=!item.selectable?t('不可选'):item.activity==='observed_active'?t('运行活动已记录'):item.activity==='observed_stopped'?t('回合已结束'):t('尚无任务事件');if(item.lastEventAt){status.textContent+=' · '+timeText(item.lastEventAt);status.title=t('事件时间：{time}；发送前仍需原生状态复查。',{time:new Date(item.lastEventAt*1000).toLocaleString(window.TaskResumeI18n.language)});}else if(item.reason)status.title=t(item.reason);row.append(check,text,status);list.append(row);
  }
- if(!list.children.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=taskRows.length?t('没有匹配的对话'):taskBusy?t('正在读取本地对话…'):!taskLoaded?t(taskLoadError?'对话暂时未能加载，请点击“刷新本地对话”重试。':'对话列表尚未加载'):t('没有读到支持的本地对话。');list.append(empty);}
+ if(!list.children.length){const empty=document.createElement('p');empty.className='hint';empty.textContent=taskRows.length?t('没有匹配的对话'):t('没有读到支持的本地对话。');list.append(empty);}
  el('task-more').hidden=!taskNext;taskControls();
 }
-function taskResult(response){if(response?.isError)throw new Error(response.content?.find(x=>x.type==='text')?.text||t('读取失败'));if(response?.structuredContent)return response.structuredContent;try{return JSON.parse(response.content.find(x=>x.type==='text').text);}catch{throw new Error(t('客户端没有返回对话数据'));}}
+function taskResult(response){if(response?.isError)throw new Error(response.content?.find(x=>x.type==='text')?.text||t('读取失败'));if(!response?.structuredContent)throw new Error(t('客户端没有返回对话数据'));return response.structuredContent;}
 async function refreshTasks(more=false){
- if(taskBusy)return;taskBusy=true;taskLoadError='';taskRender();el('task-status').textContent=t('正在只读加载本地对话，不调用模型…');if(!taskLoaded){el('task-phase').textContent=t('正在读取…');el('task-monitor').textContent=t('正在加载本地对话和已保存选择…');}
+ if(taskBusy)return;taskBusy=true;taskControls();el('task-status').textContent=t('正在只读加载本地对话，不调用模型…');
  try{const data=taskResult(await call('tasks.list',more&&taskNext?{cursor:taskNext}:{}));
-  if(!Array.isArray(data.threads)||!Array.isArray(data.selection?.threadIds)||!data.quota||!data.monitor)throw new Error(t('对话数据不完整，请刷新重试。'));
-  seedTaskSelection(data.selection);
+  if(!taskLoaded){taskChosen=new Set(data.selection.threadIds);taskSaved=new Set(taskChosen);taskSavedMode=data.selection.mode;document.querySelector('input[name="task-mode"][value="'+taskSavedMode+'"]').checked=true;}
   taskRows=more?[...new Map([...taskRows,...data.threads].map(t=>[t.id,t])).values()]:data.threads;taskNext=data.nextCursor;taskLoaded=true;
   renderMonitor(data);
   el('task-status').textContent=t('读取完成。勾选后点击保存选择；不会向对话发送设置消息。');
- }catch(error){taskLoadError=error.message;el('task-status').textContent=t(taskLoaded?'刷新失败，保留上次列表：':'读取失败：')+error.message;if(!taskLoaded){el('task-phase').textContent=t('读取失败，可重试');el('task-monitor').textContent=t('读取失败，已保存的对话选择仍然保留。');}}
+ }catch(error){el('task-status').textContent=t('读取失败：')+error.message;}
  finally{taskBusy=false;taskRender();}
 }
 el('task-select-all').addEventListener('click',()=>{if(taskBusy)return;const next=new Set([...taskChosen,...visibleTasks().filter(x=>x.selectable).map(x=>x.id)]);if(next.size>200){feedback(t('续接范围未保存'),t('最多选择 200 个对话，请缩小搜索范围。'),'error');return;}taskChosen=next;hideFeedback();taskRender();});
@@ -358,23 +312,20 @@ for(const name of ['settings','tasks','help'])el('tab-'+name).addEventListener('
 document.querySelector('.tabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=['settings','tasks','help'];const index=tabs.findIndex(name=>el('tab-'+name).getAttribute('aria-selected')==='true');showTab(tabs[event.key==='Home'?0:event.key==='End'?2:(index+(event.key==='ArrowLeft'?2:1))%3],true);});
 document.querySelectorAll('[data-show-help]').forEach(b=>b.addEventListener('click',()=>showTab('help',true)));
 document.querySelectorAll('[data-show-settings]').forEach(b=>b.addEventListener('click',()=>showTab('settings',true)));
-function edited(event){hideFeedback();controls();if(event?.target?.id==='announcementKeyword'){el('announcement-status').textContent=t('关键词已修改，保存后生效；也可点击下方按钮预览。');el('announcement-status').dataset.warning='false';}if(saved)setStatus(Object.keys(changes()).length?t('有未保存的修改'):lastSavedAt?t('已保存 · ')+lastSavedAt:t('已载入当前设置'));}
+function edited(){hideFeedback();controls();if(saved)setStatus(Object.keys(changes()).length?t('有未保存的修改'):lastSavedAt?t('已保存 · ')+lastSavedAt:t('已载入当前设置'));}
 el('settings').addEventListener('input',edited);
 document.querySelectorAll('[data-threshold]').forEach(b=>b.addEventListener('click',()=>{el('threshold').value=b.dataset.threshold;edited();}));
 document.querySelectorAll('[data-delay]').forEach(b=>b.addEventListener('click',()=>{el('delayMinutes').value=b.dataset.delay;edited();}));
 el('default-message').addEventListener('click',()=>{el('message').value=t('继续任务');edited();});
-el('default-announcement-message').addEventListener('click',()=>{el('announcementMessage').value='请帮我全量检查此项目是否还有可以优化的地方，隐藏的问题，修复好';edited();});
 el('reset').addEventListener('click',()=>{if(saved)apply(saved);setStatus(t('已撤销修改'));});
 el('settings').addEventListener('submit',async event=>{
  event.preventDefault();if(!ready||busy)return;
  if(!el('settings').reportValidity()){setStatus(t('请检查输入范围：阈值 0.01–99%，等待 1–60 分钟，间隔 30–3600 秒。'),'error');return;}
  const patch=changes();if(!Object.keys(patch).length)return;
  if('message'in patch&&!patch.message.trim()){setStatus(t('提示词不能为空。'),'error');el('message').focus();return;}
- if('announcementMessage'in patch&&!patch.announcementMessage.trim()){setStatus(t('提示词不能为空。'),'error');el('announcementMessage').focus();return;}
- if('announcementKeyword'in patch&&!patch.announcementKeyword.trim()){setStatus(t('公告关键词不能为空。'),'error');el('announcementKeyword').focus();return;}
  busy=true;hideFeedback();controls();setStatus(t('正在保存…'));
- try{apply(unpack(await call('settings.update',{set:patch})));lastSavedAt=new Date().toLocaleTimeString(window.TaskResumeI18n.language,{hour12:false});setStatus(t('设置已保存 · ')+lastSavedAt,'success');feedback(t('设置已保存'),t('设置保存时间：{time}。与额度刷新时间无关。',{time:lastSavedAt}));if('announcementKeyword'in patch)await announcementStatus();}
- catch(error){if(error.details?.activationBlocked){const actual=error.details.values;if(actual&&ids.every(id=>id in actual)){saved={...actual};el('announcementEnabled').checked=!!actual.announcementEnabled;}lastSavedAt='';announcementControl(error.details.control);}setStatus(t(error.message),'error');feedback(t('设置未保存'),t(error.message),'error');}
+ try{apply(unpack(await call('settings.update',{set:patch})));lastSavedAt=new Date().toLocaleTimeString(window.TaskResumeI18n.language,{hour12:false});setStatus(t('设置已保存 · ')+lastSavedAt,'success');feedback(t('设置已保存'),t('设置保存时间：{time}。与额度刷新时间无关。',{time:lastSavedAt}));}
+ catch(error){setStatus(t(error.message),'error');feedback(t('设置未保存'),t(error.message),'error');}
  finally{busy=false;controls();el('status-icon').setAttribute('href',el('status').dataset.tone==='error'?'#info':'#check');}
 });
 document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{
@@ -389,7 +340,7 @@ window.addEventListener('message',event=>{
 });
 async function load(){
  if(loading)return;loading=true;ready=false;controls();el('load-error').hidden=true;setStatus(t('正在读取已保存设置…'));
- try{apply(unpack(await call('settings.read',{})));setStatus(t('已载入当前设置'));refreshQuota();announcementStatus();}
+ try{apply(unpack(await call('settings.read',{})));setStatus(t('已载入当前设置'));refreshQuota();}
  catch(error){ready=false;el('load-error').hidden=false;el('load-error-text').textContent=error.message;setStatus(t('设置未载入，当前不能保存。'),'error');}
  finally{loading=false;controls();el('footer').classList.remove('loading');el('status-icon').setAttribute('href',ready?'#check':'#info');}
 }

@@ -6,7 +6,6 @@ import uuid
 
 import state as core
 import hook
-import announcement_service
 
 
 def tick(path, usage_provider=hook.read_usage, now=None):
@@ -62,7 +61,6 @@ class Worker:
         while not self.stop_event.is_set():
             try:
                 tick(self.path)
-                announcement_service.tick(self.path, cancelled=self.stop_event.is_set)
             except Exception:
                 # A corrupt or inaccessible state must not break MCP transport.
                 pass
