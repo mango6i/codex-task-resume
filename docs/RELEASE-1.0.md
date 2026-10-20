@@ -4,6 +4,9 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 
 ## 本次更新
 
+- 检测脚本不再向其他工作对话注入插件设置或排程指令，不再拦截任务结束；只保存供控制端处理的记录。
+- 修复旧管理页入口升级后无法读取的问题，兼容已发布页面地址，并改用固定入口。
+- 高额度且没有候选时明确显示“仅预排检查 · 未触发续接”；低额度记录仍严格使用用户阈值。
 - 修复恢复检查提前唤醒的问题：健康额度时提前排程，保存前核对客户端实际触发时间，拒绝早于原始刷新时间加等待时长或误排到次日的检查。
 - 对话管理显示实际检查时间，并区分漏检、暂停和已核验；旧排程记录不再冒充当前检查已就绪。
 - 修复慢请求拖住对话列表的问题；加载期间保留已保存的选择，读取失败可重试，不再把未加载显示成空列表。
@@ -29,6 +32,8 @@ Windows 本地 Codex / ChatGPT Work 插件，作者：果果。
 ![设置预览](https://raw.githubusercontent.com/mango6i/codex-task-resume/main/assets/settings-wide.png)
 
 ## English
+
+Detector hooks no longer inject setup or scheduling instructions into project chats or block task completion. Only durable records are passed to the controller. Published settings-page addresses remain supported, and the management entrypoint is stable. Healthy quota with no candidates is explicitly shown as a pre-armed check, not triggered continuation.
 
 Fixes early recovery wakes by pre-arming during healthy quota and validating the native actual wake against the original reset plus current delay. Rejects early wakes and accidental next-day recurrences. The panel distinguishes verified, missed and paused checks and shows the actual wake time. This timing protection does not prove a full live quota-recovery cycle.
 

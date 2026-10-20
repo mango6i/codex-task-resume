@@ -18,6 +18,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
+- **Focused project chats:** detector hooks only record data. They inject no plugin instructions into working chats and never block task completion. Scheduling belongs to the controller.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
 - **Recovery wake verification:** arm while quota remains available and verify the client's actual wake rather than relying on its nominal time. Missed and paused checks are shown separately.
 - **Clear status:** distinguish saved targets, candidates, recent checks, task events and actual recovery wake times.
@@ -94,6 +95,8 @@ Alternatively, attach the ZIP to a local Codex / ChatGPT Work chat with file acc
 Settings and targets are managed globally. Each target chat does not need separate initialization.
 
 An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Keep the client and device running. The plugin service performs read-only checks and cannot independently create native schedules or send messages; initial scheduling and later re-arming still require native assistant capabilities.
+
+“Check pre-armed only” means a controller check was scheduled in advance. It does not mean the low-quota threshold was reached or a continuation was sent. Candidate capture still requires remaining quota strictly below the saved threshold. If the controller cannot wake automatically, detection records remain persisted; another project chat is never used to perform scheduling.
 
 ## Settings
 

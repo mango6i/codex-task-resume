@@ -420,6 +420,7 @@ def main():
                 s['scheduledFor'] = args.due_at
                 s['scheduleWakeAt'] = timing['wakeAt']
                 s['scheduleVerifiedAt'] = timing['verifiedAt']
+                s['armRequest'] = None
                 s['armLeaseUntil'] = 0
                 event(s, now, 'schedule_verified', dueAt=args.due_at, wakeAt=timing['wakeAt'])
                 result = {'automationId': args.id, 'scheduledFor': args.due_at, **timing}

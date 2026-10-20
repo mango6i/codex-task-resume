@@ -401,5 +401,9 @@
   "尚未核验": "Not verified",
   "上次恢复检查没有在有效时间完成；旧排程不能代表续接正常。候选与发送记录保留，下次任务事件会请求补排程。": "The last recovery check did not finish at an eligible time. The old schedule does not confirm recovery. Candidates and send records are retained; the next task event requests re-arming.",
   "原生恢复检查已暂停；监控参数保留。下一次实际任务事件会请求提前建立检查。": "The native recovery check is paused. Settings are retained; the next work event requests an advance recovery wake.",
-  "已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。": "The client actual wake was verified after the original reset plus saved delay. Only work active at low quota is captured; dispatch still requires fresh checks."
+  "已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。": "The client actual wake was verified after the original reset plus saved delay. Only work active at low quota is captured; dispatch still requires fresh checks.",
+  "仅预排检查 · 未触发续接": "Check pre-armed only · continuation not triggered",
+  "这只是控制端的预排检查，尚未触发任务续接；目标对话不会收到设置或排程指令。": "This is only a controller pre-armed check. Continuation has not triggered; target chats receive no setup or scheduling instructions.",
+  "上次恢复检查没有在有效时间完成；候选与发送记录保留，需由控制端补排程。": "The last recovery check did not finish at an eligible time. Candidates and send records are retained; the controller must re-arm the check.",
+  "原生恢复检查已暂停；监控参数保留。目标任务只记录检测数据，排程由控制端处理。": "The native recovery check is paused; settings are retained. Target hooks only record data. Scheduling belongs to the controller."
 }

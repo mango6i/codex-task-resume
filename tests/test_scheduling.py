@@ -65,6 +65,9 @@ class Scheduling(unittest.TestCase):
 
     def test_disconnected_paused_and_verified_status_do_not_claim_dispatch(self):
         self.assertEqual(scheduling.health(self.s,1000,self.db)['status'],'verified')
+        with patch.object(scheduling,'native_record',return_value=scheduling.native_record('recovery',self.db)), \
+                patch.object(local_catalog.time,'time',return_value=1000):
+            self.assertEqual(local_catalog.monitor_state(self.s,{'remaining':94})['phase'],'recovery_prearmed')
         self.change(status='PAUSED')
         self.assertEqual(scheduling.health(self.s,1000,self.db)['status'],'paused')
         self.assertEqual(scheduling.health(self.s,1000,Path(self.temp.name)/'missing')['status'],'unverified')
@@ -97,7 +100,8 @@ class Scheduling(unittest.TestCase):
         result=hook.handle(self.path,{'session_id':'task','turn_id':'work-turn',
                 'hook_event_name':'UserPromptSubmit','prompt':'Finish the feature'},
                 lambda:observation(used=20)['usage'],1000)
-        self.assertIn('schedule-plan',result['hookSpecificOutput']['additionalContext'])
+        self.assertIsNone(result)
+        self.assertEqual(core.load(self.path)['armRequest']['controllerId'],'controller')
         self.assertEqual(core.load(self.path)['queue'],{})
 
     def test_changed_delay_and_weekly_blocking_window_are_respected(self):
@@ -120,6 +124,29 @@ class Scheduling(unittest.TestCase):
                     lambda:observation(used=20,reset=1101)['usage'],1000)
         self.assertIsNone(result)
         self.assertEqual(core.load(self.path)['queue'],{})
+
+    def test_all_target_hooks_are_silent_even_when_a_schedule_is_missing(self):
+        for used in (0, 90, 91, 100):
+            with self.subTest(used=used):
+                s=state();s['settings']['threshold']=10
+                core.atomic_write(self.path,s)
+                payload={'session_id':'task','turn_id':'work-turn','prompt':'Finish the project'}
+                for n,event in enumerate(('UserPromptSubmit','PostToolUse','Stop','SessionEnd')):
+                    self.assertIsNone(hook.handle(self.path,{**payload,'hook_event_name':event},
+                            lambda:observation(used=used)['usage'],1000+n))
+                saved=core.load(self.path)
+                self.assertEqual(bool(saved['queue']),used>90)
+                self.assertTrue(saved['enabled'])
+
+    def test_explicit_subagent_hooks_never_record_or_instruct(self):
+        core.atomic_write(self.path,state())
+        original=self.path.read_bytes()
+        for fields in ({'source':'fork'},{'source':'subagent'},{'parent_thread_id':'parent'},
+                       {'is_subagent':True}):
+            self.assertIsNone(hook.handle(self.path,{'session_id':'child','turn_id':'child-turn',
+                    'hook_event_name':'UserPromptSubmit','prompt':'Work',**fields},
+                    lambda: self.fail('Subagent must not query quota'),1000))
+        self.assertEqual(self.path.read_bytes(),original)
 
 
 if __name__=='__main__':

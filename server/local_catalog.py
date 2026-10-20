@@ -119,7 +119,7 @@ def monitor_state(state, quota):
     elif schedule['status'] in {'missed', 'paused'}:
         phase = 'recovery_missed' if schedule['status'] == 'missed' else 'recovery_paused'
     elif schedule['status'] == 'verified':
-        phase = 'recovery_scheduled'
+        phase = 'recovery_prearmed' if pending == 0 and quota['remaining'] >= threshold else 'recovery_scheduled'
     elif scheduled:
         phase = 'schedule_record'
     elif pending:

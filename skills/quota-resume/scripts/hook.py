@@ -81,7 +81,8 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         return None
     event_name = payload.get('hook_event_name')
     sid = payload.get('session_id')
-    if not isinstance(sid, str) or not sid or payload.get('source') == 'fork':
+    if (not isinstance(sid, str) or not sid or payload.get('source') in ('fork', 'subagent')
+            or payload.get('parent_thread_id') or payload.get('is_subagent') is True):
         return None
     probe_token = None
     with core.locked(path):
@@ -149,7 +150,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 s['settings']['announcementEnabled'] = False
                 core.event(s, now, 'account_changed')
                 core.atomic_write(path, s)
-                return {'systemMessage': '任务续接已暂停：登录账号改变，请重新检查配置。'}
+                return None
             s['lastProbeError'] = None
             s['lastQuota'] = {**q, 'observedAt': now}
             s['lastLiveUsage'] = usage
@@ -181,7 +182,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                                  'threads': core.runtime_threads(s, now)}, now)
                 pending = [i for i in s['queue'].values() if i['status'] == 'pending']
         plan = core.schedule_plan(s, now)
-        if event_name in {'SessionEnd', 'Interrupt'} or not plan or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
+        if event_name in {'SessionEnd', 'Interrupt'} or not plan:
             core.atomic_write(path, s)
             return None
         due = plan['dueAt']
@@ -191,31 +192,21 @@ def handle(path, payload, usage_provider=read_usage, now=None):
             import scheduling
             try:
                 scheduling.verify(s, s['automationId'], due, now)
+                s['armRequest'] = None
                 core.atomic_write(path, s)
                 return None
             except (ValueError, OSError):
                 pass
-        s['armLeaseUntil'] = now+120
-        s['nextArmAfter'] = now+600
+        # A lifecycle hook is a detector, never an instruction to the task model.
+        # Persist the request for the controller; do not inject additionalContext,
+        # emit system messages, or block Stop to make another chat schedule work.
+        previous_request = s.get('armRequest') or {}
+        s['armRequest'] = {'dueAt': due, 'nominalAt': plan['nominalAt'],
+                           'requestedAt': previous_request.get('requestedAt', now)
+                               if previous_request.get('dueAt') == due else now,
+                           'controllerId': s['controllerId'], 'status': 'pending'}
         core.atomic_write(path, s)
-        context = ('Task Resume quota detector needs a verified recovery wake, armed while quota is available. '
-                   'Use the installed $quota-resume skill in arm mode. '
-                   'Read state from '+json.dumps(str(path))+'. '
-                   'The user enabled this workflow and configured the threshold and exact message in that state. '
-                   'Use native thread tools to verify active candidates and create/update ONE native heartbeat '
-                   'targeted at the saved controllerId. Run state.py schedule-plan for the original dueAt '
-                   'and guarded nominalAt, schedule that nominal time in the client timezone, then run '
-                   'state.py set-automation --id ID --due-at ORIGINAL_DUE_AT. This verifies the native actual '
-                   'next wake is not early or on tomorrow\'s cycle; if rejected, move the SAME schedule later '
-                   'and verify again. Never claim an unverified recurrence is ready. '
-                   'Do not send continuation messages during this arm step. '
-                   'Do not use the independent read-only server for desktop thread state. '
-                   'If quota/tools prevent scheduling, leave the queue persisted and report the limitation once.')
-        if event_name == 'Stop':
-            return {'decision': 'block', 'reason': context}
-        if event_name in {'SessionEnd', 'Interrupt'}:
-            return None
-        return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}
+        return None
 
 
 def main():

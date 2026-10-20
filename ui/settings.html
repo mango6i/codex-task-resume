@@ -300,7 +300,7 @@ el('announcement-check').addEventListener('click',()=>announcementStatus(true));
 function announcementControl(control){if(!control)return;const unavailable=control.available===false;el('announcement-enable-state').textContent=t(unavailable?'本机控制接口暂不可用，无法开启。关键词和指令可单独保存。':'原生控制通道与模型已核实。');el('announcement-enable-state').dataset.warning=String(unavailable);}
 el('announcement-home').addEventListener('click',async event=>{if(window.parent===window)return;event.preventDefault();try{await request('ui/open-link',{url:'https://x.com/thsottiaux'});}catch{feedback(t('来源页面未打开'),'https://x.com/thsottiaux','error');}});
 let taskLoaded=false,taskBusy=false,taskSelectionSeeded=false,taskLoadError='',taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
-const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('存在排程记录 · 待核验'),recovery_missed:t('恢复检查漏检 · 需补排程'),recovery_paused:t('恢复检查已暂停'),recovery_scheduled:t('恢复检查时间已核验')};
+const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('存在排程记录 · 待核验'),recovery_missed:t('恢复检查漏检 · 需补排程'),recovery_paused:t('恢复检查已暂停'),recovery_scheduled:t('恢复检查时间已核验'),recovery_prearmed:t('仅预排检查 · 未触发续接')};
 function renderMonitor(data){
  const monitor=data.monitor,quota=data.quota,phase=monitor.phase;
  const reset=timeText(quota.resetAt);liveQuota=data;renderQuota();
@@ -308,7 +308,7 @@ function renderMonitor(data){
  el('task-monitor').replaceChildren();
  for(const [label,value] of [[t('剩余额度'),quota.remaining+'%'],[t('刷新时间'),reset],[t('触发阈值'),'< '+monitor.threshold+'%'],[t('已选对话'),monitor.selectedCount??taskSaved.size],[t('待续接'),monitor.pendingCount+t(' 个')],[t('最近成功检测'),monitor.lastCheckedAt?timeText(monitor.lastCheckedAt):t('暂无记录')],[t('检测服务'),t(monitor.serviceConnected?'服务已连接':'尚无服务心跳')],[t('最近任务事件'),monitor.lastEventAt?timeText(monitor.lastEventAt):t('暂无记录')],[t('实际检查时间'),monitor.scheduleWakeAt?timeText(monitor.scheduleWakeAt):t('尚未核验')]]){const item=document.createElement('div'),caption=document.createElement('small'),number=document.createElement('strong');caption.textContent=label;number.textContent=value;item.append(caption,number);el('task-monitor').append(item);}
  const detail={setup_required:t('先初始化一个全局控制对话；无需在每个目标对话发送设置指令。'),disabled:t('参数和对话选择已保留。监控开关关闭，后续不会自动发送。'),waiting_threshold:t('当前额度尚未低于 ')+monitor.threshold+t('%，暂不入队。只有低额度时实际运行的任务才会记录；勾选的空闲对话不会入队。目前没有恢复排程。'),low_quota:t('额度已低于阈值，但尚无待续接候选。需确认目标范围与检测脚本；目前没有恢复排程。'),pending_unscheduled:t('已有 ')+monitor.pendingCount+t(' 个候选，尚未安排恢复检查，不能保证到时自动续接。'),schedule_record:t('仅发现已保存的排程记录，尚未核验客户端是否启用；这不等于保证到时自动发送。')};
- Object.assign(detail,{recovery_missed:t('上次恢复检查没有在有效时间完成；旧排程不能代表续接正常。候选与发送记录保留，下次任务事件会请求补排程。'),recovery_paused:t('原生恢复检查已暂停；监控参数保留。下一次实际任务事件会请求提前建立检查。'),recovery_scheduled:t('已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。')});
+ Object.assign(detail,{recovery_missed:t('上次恢复检查没有在有效时间完成；候选与发送记录保留，需由控制端补排程。'),recovery_paused:t('原生恢复检查已暂停；监控参数保留。目标任务只记录检测数据，排程由控制端处理。'),recovery_scheduled:t('已核对客户端实际触发时间，晚于原始刷新时间加等待时长。候选仍只记录低额度时运行的任务；实际发送前还需复查。'),recovery_prearmed:t('这只是控制端的预排检查，尚未触发任务续接；目标对话不会收到设置或排程指令。')});
  el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'');
  return taskPhases[phase]||t('状态待核验');
 }

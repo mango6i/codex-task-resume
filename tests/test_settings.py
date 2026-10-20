@@ -41,6 +41,22 @@ class Settings(unittest.TestCase):
             self.assertFalse(r['values']['monitoringEnabled'])
             self.assertEqual(list(Path(td).iterdir()), [])
 
+    def test_cached_old_entrypoints_keep_rendering_the_current_form(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'state.json'
+            for suffix in ('20261016-bilingual','20261016-compact-header','20261018-announcements',
+                           '20261018-balanced-switches','20261018-keyword','20261018-catalog',
+                           '20261019-recovery'):
+                for stem,filename in [('settings-studio-','settings.html'),
+                                      ('settings-launcher-studio-','launcher.html')]:
+                    uri='ui://task-resume/'+stem+suffix+'.html'
+                    r=settings_mcp.dispatch('resources/read',{'uri':uri},path)['contents'][0]
+                    self.assertEqual(r['uri'],uri)
+                    self.assertIn('<!doctype html>',r['text'])
+                    self.assertEqual(r['_meta']['ui']['prefersBorder'],filename!='settings.html')
+            self.assertEqual(settings_mcp.EDITOR_URI,'ui://task-resume/settings.html')
+            self.assertEqual(list(Path(td).iterdir()),[])
+
     def test_slow_quota_read_does_not_block_local_chat_inventory_or_settings(self):
         with tempfile.TemporaryDirectory() as td:
             bootstrap = '''

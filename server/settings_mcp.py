@@ -18,9 +18,16 @@ import desktop_bridge
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
-EDITOR_URI = 'ui://task-resume/settings-studio-20261019-recovery.html'
-LAUNCHER_URI = 'ui://task-resume/settings-launcher-studio-20261019-recovery.html'
+EDITOR_URI = 'ui://task-resume/settings.html'
+LAUNCHER_URI = 'ui://task-resume/launcher.html'
 UI_FILES = {EDITOR_URI: 'settings.html', LAUNCHER_URI: 'launcher.html'}
+# Native entrypoints can retain a previous URI while the plugin stays at 1.0.0.
+# Keep every published form address readable instead of returning a blank app.
+for suffix in ('20261016-bilingual', '20261016-compact-header', '20261018-announcements',
+               '20261018-balanced-switches', '20261018-keyword', '20261018-catalog',
+               '20261019-recovery'):
+    UI_FILES['ui://task-resume/settings-studio-'+suffix+'.html'] = 'settings.html'
+    UI_FILES['ui://task-resume/settings-launcher-studio-'+suffix+'.html'] = 'launcher.html'
 PROPERTIES = {
     'threshold': {'type': 'number', 'title': '剩余额度低于（%）', 'minimum': 0.01, 'maximum': 99,
                   'description': '严格低于这个百分比时，记录正在运行的本机任务。默认 2%。'},
@@ -164,12 +171,12 @@ def dispatch_raw(method, params, path):
             raise ValueError('Resource not found')
         return {'contents': [{'uri': uri, 'mimeType': 'text/html;profile=mcp-app',
             'text': i18n.render(UI_FILES[uri]),
-            '_meta': {'ui': {'prefersBorder': uri != EDITOR_URI,
+            '_meta': {'ui': {'prefersBorder': UI_FILES[uri] != 'settings.html',
                             'csp': {'connectDomains': [], 'resourceDomains': []}},
                       'openai/ui': {'availableDisplayModes': ['inline', 'fullscreen'],
                                     'preferredDisplayMode': 'inline'},
                       'openai/widgetDescription': 'Codex 任务续接的客户端内设置表单。',
-                      'openai/widgetPrefersBorder': uri != EDITOR_URI,
+                      'openai/widgetPrefersBorder': UI_FILES[uri] != 'settings.html',
                       'openai/widgetCSP': {'connect_domains': [], 'resource_domains': [],
                                            'redirect_domains': ['https://github.com', 'https://x.com']}}}]}
     if method == 'tools/call':
