@@ -48,7 +48,16 @@ def atomic_write(path, obj):
             stream.write('\n')
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temp, path)
+        for attempt in range(5):
+            try:
+                os.replace(temp, path)
+                break
+            except PermissionError as error:
+                # Windows readers/antivirus can briefly deny replacement.
+                # Never overwrite in place or discard the old durable ledger.
+                if getattr(error, 'winerror', None) not in {5, 32, 33} or attempt == 4:
+                    raise
+                time.sleep(.05 * (attempt+1))
     finally:
         if temp.exists():
             temp.unlink()
@@ -92,8 +101,30 @@ def locked(path):
 
 def load(path):
     s = read_json(path)
-    if s.get('version') != VERSION:
+    if not isinstance(s, dict) or type(s.get('version')) is not int or s['version'] != VERSION:
         raise ValueError('Unsupported state version')
+    if not isinstance(s.get('enabled'), bool):
+        raise ValueError('Invalid saved monitoring switch; no action authorized')
+    for key in ('accountId', 'controllerId'):
+        if not isinstance(s.get(key), str) or not s[key].strip():
+            raise ValueError('Invalid saved ownership; no action authorized')
+    cfg = s.get('settings')
+    if not isinstance(cfg, dict):
+        raise ValueError('Invalid saved settings')
+    for key, lo, hi in [('threshold', .01, 99), ('delaySeconds', 60, 3600),
+                        ('checkSeconds', 30, 3600), ('expiryHours', 1, 720)]:
+        number(cfg.get(key), key, lo, hi)
+    if (not isinstance(cfg.get('message'), str) or not cfg['message'].strip()
+            or len(cfg['message']) > 12000 or not isinstance(cfg.get('limitId'), str) or not cfg['limitId']):
+        raise ValueError('Invalid saved continuation settings')
+    scope = s.get('selection', {'mode': 'automatic', 'threads': {}})
+    if (not isinstance(scope, dict) or scope.get('mode') not in {'automatic', 'selected'}
+            or not isinstance(scope.get('threads'), dict)):
+        raise ValueError('Invalid saved target scope; no action authorized')
+    if not isinstance(s.get('queue'), dict) or not isinstance(s.get('runtime'), dict):
+        raise ValueError('Invalid saved queue or activity')
+    if not isinstance(s.get('excluded'), list) or any(not isinstance(t, str) for t in s['excluded']):
+        raise ValueError('Invalid saved exclusions; no action authorized')
     return s
 
 

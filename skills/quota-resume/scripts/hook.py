@@ -80,10 +80,13 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         return None
     event_name = payload.get('hook_event_name')
     sid = payload.get('session_id')
-    if (not isinstance(sid, str) or not sid or payload.get('source') in {'fork', 'subagent'}
+    source = payload.get('source')
+    if (not isinstance(sid, str) or not sid or isinstance(source, dict)
+            or source in ('fork', 'subagent')
             or payload.get('parent_thread_id') or payload.get('is_subagent') is True):
         return None
     probe_token = None
+    stopping_activity = None
     with core.locked(path):
         s = core.load(path)
         if not s['enabled'] or sid == s['controllerId']:
@@ -110,12 +113,22 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         elif event_name in {'Stop', 'Interrupt', 'SessionEnd'}:
             if event_name != 'SessionEnd' and (not turn_id or previous.get('turnId') != turn_id):
                 return None
+            if event_name == 'Stop' and previous.get('active'):
+                # This event proves the captured turn was working immediately
+                # before Stop. It does not prove why it stopped; native recovery
+                # must still verify the exact turn's quota failure.
+                stopping_activity = {**previous, 'seenAt': now}
             s['runtime'][sid] = {**previous, 'active': False, 'seenAt': now}
             if event_name == 'Interrupt':
                 for item in s['queue'].values():
                     if item['threadId'] == sid and item['status'] == 'pending':
                         item['status'] = 'user_paused'
         elif event_name != 'SessionStart':
+            return None
+        if event_name in {'Interrupt', 'SessionEnd'}:
+            # Interrupt has a short host deadline. Persist the user's stop
+            # before returning; never spend that deadline querying the network.
+            core.atomic_write(path, s)
             return None
         # Persist activity before an async query; other events keep updating it.
         if (now - s.get('lastProbeAt', 0) >= s['settings']['checkSeconds']
@@ -156,6 +169,10 @@ def handle(path, payload, usage_provider=read_usage, now=None):
             if q['remaining'] < s['settings']['threshold']:
                 # Capture event-observed activity, NOT invented cross-process status.
                 threads = core.runtime_threads(s, now)
+                if (stopping_activity and s['runtime'].get(sid, {}).get('turnId') == turn_id
+                        and not s['runtime'][sid].get('active') and s['runtime'][sid].get('seenAt') == now):
+                    snapshot = {**s, 'runtime': {sid: stopping_activity}}
+                    threads += core.runtime_threads(snapshot, now)
                 core.observe(s, {'observedAt': now, 'usage': usage, 'threads': threads}, now)
                 s['lastProbeError'] = None
                 s['lastProbeSuccessAt'] = now
@@ -169,18 +186,24 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         pending = [i for i in s['queue'].values() if i['status'] == 'pending']
         q = s.get('lastQuota', {})
         # Fresh low-quota cache can capture a task starting within the throttle interval.
-        if (event_name in {'UserPromptSubmit', 'PostToolUse'}
+        if ((event_name in {'UserPromptSubmit', 'PostToolUse'} or stopping_activity)
                 and 0 <= now-q.get('observedAt', 0) <= min(90, s['settings']['checkSeconds'])
                 and q.get('remaining', 100) < s['settings']['threshold']):
             # Reuse the last *live* quota only with the same strict activity gate.
             fresh = s.get('lastLiveUsage')
             if fresh:
+                threads = core.runtime_threads(s, now)
+                if (stopping_activity and s['runtime'].get(sid, {}).get('turnId') == turn_id
+                        and s['runtime'][sid].get('seenAt') == now):
+                    threads += core.runtime_threads({**s, 'runtime': {sid: stopping_activity}}, now)
                 core.observe(s, {'observedAt': now, 'usage': fresh,
-                                 'threads': core.runtime_threads(s, now)}, now)
+                                 'threads': threads}, now)
                 pending = [i for i in s['queue'].values() if i['status'] == 'pending']
         if not pending:
             s['armRequest'] = None
-        if event_name in {'SessionEnd', 'Interrupt'} or not pending or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
+        owns_candidate = any(i['threadId'] == sid and i.get('turnId') == turn_id for i in pending)
+        if (event_name not in {'UserPromptSubmit', 'PostToolUse'} or not owns_candidate
+                or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0)):
             core.atomic_write(path, s)
             return None
         import recovery_schedule
@@ -225,10 +248,6 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                    'Only helper success verifies the actual ACTIVE timer, controller and next wake. '
                    'If timing is early, move the SAME timer later and re-verify; preserve original dueAt. '
                    'On failure retain the queue and report incomplete scheduling once. Then return to the task.')
-        if event_name == 'Stop':
-            return {'decision': 'block', 'reason': context}
-        if event_name in {'SessionEnd', 'Interrupt'}:
-            return None
         return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}
 
 

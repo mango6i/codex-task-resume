@@ -102,6 +102,8 @@ Chat titles, project paths, saved prompts and newlines remain unchanged.
 
 **Does it work with the client closed?** Local detection stops when the plugin service disconnects or the device sleeps; recovery may be delayed. Ordinary ChatGPT web, cloud tasks, remote hosts and subagents are unsupported.
 
+**Can client updates affect it?** Hooks, UI resources and native scheduling interfaces may change. Restart after updating the plugin and review hook trust if prompted. Check both captured candidates and the verified recovery timer; an enabled switch does not establish a schedule. This build keeps earlier UI entrypoints readable and does not create an extra continuation turn at Stop.
+
 **How do I stop?** Disable continuation and save. To pause the native check too, tell the controller: `Use $quota-resume to stop monitoring and automatic continuation.`
 
 ## Data and privacy

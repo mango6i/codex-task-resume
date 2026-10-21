@@ -57,7 +57,7 @@
           {
             "type": "command",
             "command": "python \"${PLUGIN_ROOT}/skills/quota-resume/scripts/hook.py\"",
-            "timeout": 20,
+            "timeout": 3,
             "commandWindows": "python \"$env:PLUGIN_ROOT/skills/quota-resume/scripts/hook.py\""
           }
         ]

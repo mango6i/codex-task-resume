@@ -313,5 +313,9 @@
   "勾选仅限定范围，不直接入队；发送前必须核对同一轮任务确因本次额度耗尽停止。": "Selection only limits scope and does not enqueue work. Dispatch requires the same captured turn to have stopped because this quota window was exhausted.",
   "本轮低额度时实际运行并被记录、随后明确因额度耗尽停止的同一轮任务。额度恢复且等待时间已到后，才向原对话发送保存的提示词。": "Only the same work turn observed running at low quota and then explicitly stopped by quota exhaustion qualifies. After recovery and your saved delay, send the saved prompt to its original chat.",
   "只有低额度时实际运行的任务才会记录；勾选的空闲对话不会入队。目前没有恢复排程。": "Only work observed running at low quota is captured; selected idle chats are not queued. No recovery schedule is recorded.",
-  "选一个保留的本地对话初始化一次。它承载后台恢复排程，不需要置于前台或保持面板打开，本身也不会成为续接目标。初始化保留参数且不开启开关。": "Initialize once in a retained local chat. It hosts the background recovery schedule; its page and settings panel need not stay visible. It is excluded from targets, and initialization preserves settings without activation."
+  "选一个保留的本地对话初始化一次。它承载后台恢复排程，不需要置于前台或保持面板打开，本身也不会成为续接目标。初始化保留参数且不开启开关。": "Initialize once in a retained local chat. It hosts the background recovery schedule; its page and settings panel need not stay visible. It is excluded from targets, and initialization preserves settings without activation.",
+  "正在读取本地对话…": "Loading local chats…",
+  "刷新失败，保留上次列表：": "Refresh failed; previous list retained: ",
+  "恢复检查已排程": "Recovery check scheduled",
+  "已核验客户端排程已启用，并绑定此控制对话；到时仍需检查额度和原任务状态。": "The native timer is active and targets this controller. Recovery still requires fresh quota and task-state checks."
 }

@@ -12,6 +12,9 @@ import state as core
 
 
 class Reader:
+    # Bound the entire operation, including multi-page/target validation. The
+    # UI waits longer than this plus process cleanup, so no save finishes late.
+    total_timeout = 20
     def __enter__(self):
         self.deadline = time.monotonic()+getattr(self, 'total_timeout', float('inf'))
         executable = shutil.which('codex')
@@ -46,6 +49,8 @@ class Reader:
     def call(self, method, params):
         if method not in {'initialize', 'account/rateLimits/read', 'thread/list', 'thread/read'}:
             raise ValueError('Inventory only allows read-only requests.')
+        if time.monotonic() >= self.deadline:
+            raise ValueError('本地对话读取超时，请稍后刷新。')
         self.identifier += 1
         identifier = self.identifier
         self.proc.stdin.write(json.dumps({'id': identifier, 'method': method, 'params': params})+'\n')
@@ -93,7 +98,7 @@ def normalize(thread, state):
                    and (not state or identifier != state.get('controllerId'))
                    and (not state or identifier not in state.get('excluded', [])))
     activity = (state or {}).get('runtime', {}).get(identifier, {})
-    recent = time.time()-activity.get('seenAt', 0) < 86400
+    recent = 0 <= time.time()-activity.get('seenAt', 0) < 86400
     return {'id': identifier, 'title': thread.get('name') or thread.get('threadName') or '未命名对话',
             'project': cwd or '', 'updatedAt': thread.get('updatedAt'), 'selectable': allowed,
             'activity': ('observed_active' if activity.get('active') else 'observed_stopped') if recent else 'unverified',
@@ -230,7 +235,8 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
         core.event(state, now, 'selection_saved', count=len(targets), mode=mode)
         core.atomic_write(path, state)
     quota = core.quota(usage, state['settings']['limitId'])
+    status = monitor_state(state, quota)
     return {'mode': mode, 'threadIds': list(targets), 'pendingCount': sum(i['status'] == 'pending' for i in state['queue'].values()),
-            'scheduled': bool(state.get('automationId') and state.get('scheduledFor')), 'sent': False,
+            'scheduled': status['scheduled'], 'sent': False,
             'quota': {'remaining': quota['remaining'], 'resetAt': quota['reset']},
-            'monitor': monitor_state(state, quota)}
+            'monitor': status}

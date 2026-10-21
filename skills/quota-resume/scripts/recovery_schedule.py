@@ -8,7 +8,13 @@ import sqlite3
 
 
 def native_record(identifier, database=None):
-    database = Path(database or Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')/'sqlite/codex-dev.db')
+    if database is None:
+        root = Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')/'sqlite'
+        candidates = [root/name for name in ('codex-dev.db', 'codex.db') if (root/name).is_file()]
+        if len(candidates) != 1:
+            raise ValueError('Native schedule store is missing or ambiguous; client compatibility is not verified')
+        database = candidates[0]
+    database = Path(database)
     if not database.is_file():
         raise ValueError('Native schedule metadata unavailable; recovery timing is not verified')
     try:
