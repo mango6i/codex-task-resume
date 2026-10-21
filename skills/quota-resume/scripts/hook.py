@@ -86,7 +86,9 @@ def handle(path, payload, usage_provider=read_usage, now=None):
     probe_token = None
     with core.locked(path):
         s = core.load(path)
-        if not s['enabled']:
+        if not s['enabled'] or sid == s['controllerId']:
+            # The controller is already performing recovery. Its own prompt,
+            # tools and Stop must never redirect it into another arm step.
             return None
         turn_id = payload.get('turn_id')
         previous = s['runtime'].get(sid, {})
@@ -189,6 +191,10 @@ def handle(path, payload, usage_provider=read_usage, now=None):
             core.atomic_write(path, s)
             return None
         if not plan:
+            core.atomic_write(path, s)
+            return None
+        if plan.get('recentRecoveryWake'):
+            # Other project events must also leave a just-fired check alone.
             core.atomic_write(path, s)
             return None
         due = plan['dueAt']

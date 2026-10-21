@@ -31,10 +31,10 @@ class RecoverySchedule(unittest.TestCase):
         self.s['automationId'] = 'existing'
         with closing(sqlite3.connect(self.db)) as c, c:
             c.execute('CREATE TABLE automations (id TEXT,name TEXT,prompt TEXT,kind TEXT,status TEXT,'
-                      'target_thread_id TEXT,notification_policy TEXT,next_run_at INTEGER,next_run_nominal_at INTEGER)')
-            c.execute('INSERT INTO automations VALUES (?,?,?,?,?,?,?,?,?)',
+                      'target_thread_id TEXT,notification_policy TEXT,next_run_at INTEGER,next_run_nominal_at INTEGER,last_run_at INTEGER)')
+            c.execute('INSERT INTO automations VALUES (?,?,?,?,?,?,?,?,?,?)',
                       ('existing','Existing monitor','Preserve saved prompt','heartbeat','PAUSED',
-                       'controller','failed_runs_only',None,None))
+                       'controller','failed_runs_only',None,None,None))
 
     def change(self, **values):
         with closing(sqlite3.connect(self.db)) as c, c:
@@ -129,6 +129,34 @@ class RecoverySchedule(unittest.TestCase):
                           lambda:self.fail('Subagents must not query or schedule'),1000)
             self.assertIsNone(r)
         self.assertEqual(before,self.path.read_bytes())
+
+    def test_controller_recovery_events_never_emit_an_arm_instruction(self):
+        core.atomic_write(self.path,self.s)
+        before = self.path.read_bytes()
+        for event in ['UserPromptSubmit','PostToolUse','Stop','SessionStart','SessionEnd','Interrupt']:
+            r=hook.handle(self.path,{'session_id':'controller','turn_id':'recovery-check',
+                'hook_event_name':event,'prompt':'Run the scheduled recovery check'},
+                lambda:self.fail('Controller hooks must not query or preempt recovery'),1220)
+            self.assertIsNone(r)
+            self.assertEqual(before,self.path.read_bytes())
+
+    def test_other_task_events_do_not_rearm_a_just_fired_recovery_check(self):
+        self.change(status='ACTIVE',last_run_at=1220000,next_run_at=87620000,next_run_nominal_at=87920000)
+        s=self.s
+        core.observe(s,observation(1221,0,2000,'notLoaded','unknown'),1221)
+        core.atomic_write(self.path,s)
+        record=timers.native_record('existing',self.db)
+        self.assertTrue(timers.request(s,self.path,1221,self.db)['recentRecoveryWake'])
+        with patch.object(timers,'native_record',return_value=record):
+            r=hook.handle(self.path,{'session_id':'other','turn_id':'other-work','hook_event_name':'UserPromptSubmit',
+                                   'prompt':'Finish this project'},lambda:observation(1221,0,2000)['usage'],1221)
+        self.assertIsNone(r)
+        self.assertFalse(core.load(self.path).get('armRequest'))
+        self.assertFalse(timers.request(s,self.path,1821,self.db)['recentRecoveryWake'])
+
+    def test_early_native_wake_does_not_suppress_required_rearming(self):
+        self.change(status='ACTIVE',last_run_at=1219000,next_run_at=87620000,next_run_nominal_at=87920000)
+        self.assertFalse(timers.request(self.s,self.path,1221,self.db)['recentRecoveryWake'])
 
 
 if __name__ == '__main__':

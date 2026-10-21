@@ -15,7 +15,7 @@ def native_record(identifier, database=None):
         with closing(sqlite3.connect(database.resolve().as_uri()+'?mode=ro', uri=True, timeout=.5)) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute('SELECT id,name,prompt,kind,status,target_thread_id,notification_policy,'
-                               'next_run_at,next_run_nominal_at FROM automations WHERE id=?', (identifier,)).fetchone()
+                               'next_run_at,next_run_nominal_at,last_run_at FROM automations WHERE id=?', (identifier,)).fetchone()
             return dict(row) if row else None
     except sqlite3.Error:
         raise ValueError('Native schedule metadata unavailable; recovery timing is not verified') from None
@@ -81,4 +81,9 @@ def request(s, state_path, now, database=None):
     if record:
         args['id'] = identifier
         args['notificationPolicy'] = record.get('notification_policy')
-    return {'dueAt': due, 'nominalAt': nominal, 'nominalLocal': local.isoformat(), 'arguments': args}
+    last_run = (record or {}).get('last_run_at')
+    recent_wake = (bool(record) and record['status'] == 'ACTIVE'
+                   and isinstance(last_run, (int, float)) and not isinstance(last_run, bool)
+                   and due <= last_run/1000 <= now and now-last_run/1000 < 600)
+    return {'dueAt': due, 'nominalAt': nominal, 'nominalLocal': local.isoformat(),
+            'recentRecoveryWake': recent_wake, 'arguments': args}

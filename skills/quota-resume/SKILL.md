@@ -55,6 +55,8 @@ This step only schedules a future controller check. It never sends to targets or
 
 ## At the scheduled recovery check
 
+The controller's own lifecycle hooks never emit timer-only instructions. A recovery wake proceeds directly through the checks and dispatch below; it must not return to arm mode merely because its next recurrence now points to tomorrow. Only a genuinely early wake or a later blocking quota window needs another timer update.
+
 1. Read state. If disabled, exit quietly and pause the stored heartbeat. Fetch live native quota. Unknown quota is not zero and not proof of recovery. Account mismatch disables monitoring. No credentials are read directly.
 
    If any pending original reset plus CURRENT delay is still in the future, an early native wake has occurred. Re-arm the SAME timer using `arm-plan` and actual-wake verification; do not send, pause as if complete, or replace the original reset with the newly observed quota window.
