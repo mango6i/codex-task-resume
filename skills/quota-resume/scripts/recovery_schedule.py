@@ -62,12 +62,22 @@ def request(s, state_path, now, database=None):
     if (q.get('accountId') == s['accountId'] and 0 <= now-q.get('observedAt', 0) <= 90
             and not q.get('allowed') and q.get('blockingReset', 0) > now):
         due = max(due, q['blockingReset']+s['settings']['delaySeconds'])
-    nominal = max(due, now+60)+300
-    local = datetime.datetime.fromtimestamp(nominal, datetime.timezone.utc).astimezone()
     identifier = s.get('automationId')
     record = native_record(identifier, database) if identifier else None
     if record and (record['kind'] != 'heartbeat' or record['target_thread_id'] != s['controllerId']):
         raise ValueError('Saved timer belongs to another workflow; no update authorized')
+    # Do not silently add five minutes to the user's reset delay. Compensate
+    # only for an observed early native offset, then verify the actual wake.
+    early_offset = 0
+    if record:
+        actual, native_nominal = record.get('next_run_at'), record.get('next_run_nominal_at')
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+               for v in (actual, native_nominal)):
+            offset = (native_nominal-actual)/1000
+            if 0 < offset <= 600:
+                early_offset = offset+1
+    nominal = math.ceil(max(due, now+60)+early_offset)
+    local = datetime.datetime.fromtimestamp(nominal, datetime.timezone.utc).astimezone()
     helper = Path(__file__).with_name('state.py')
     skill = helper.parent.parent/'SKILL.md'
     prompt = (record or {}).get('prompt') or (

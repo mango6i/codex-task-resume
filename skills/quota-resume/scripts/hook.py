@@ -244,7 +244,8 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                                 'set-automation', '--id', str(plan['arguments'].get('id', '<returned automationId>')),
                                 '--due-at', str(due)], ensure_ascii=False)+'. '
                    'Only helper success verifies the actual ACTIVE timer, controller and next wake. '
-                   'If timing is early, move the SAME timer later and re-verify; preserve original dueAt. '
+                   'If timing is early, run arm-plan again for corrected arguments, update the SAME timer '
+                   'and re-verify, with at most two corrections; preserve original dueAt. '
                    'On failure retain the queue and report incomplete scheduling once. Then return to the task.')
         return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}
 

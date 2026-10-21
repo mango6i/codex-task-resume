@@ -63,7 +63,7 @@ class RecoverySchedule(unittest.TestCase):
         self.assertEqual(args['notificationPolicy'], 'failed_runs_only')
         self.assertFalse({'executionEnvironment','destination','model','thinking'} & args.keys())
         self.assertEqual(plan['dueAt'], 1220)
-        self.assertGreater(plan['nominalAt'], plan['dueAt'])
+        self.assertEqual(plan['nominalAt'], plan['dueAt'])
 
     def test_native_timing_rejects_early_or_tomorrow_and_accepts_same_cycle(self):
         for wake, nominal in [(1219,1520),(87620,87920)]:
@@ -80,7 +80,7 @@ class RecoverySchedule(unittest.TestCase):
         core.observe(self.s, observation(1220,0,2000,'notLoaded','unknown'),1220)
         plan = timers.request(self.s,self.path,1220,self.db)
         self.assertEqual(plan['dueAt'],1220)
-        self.assertEqual(plan['nominalAt'],1580)
+        self.assertEqual(plan['nominalAt'],1280)
         self.s['lastQuota'].update(allowed=False,blockingReset=9000)
         self.assertEqual(timers.request(self.s,self.path,1220,self.db)['dueAt'],9120)
 
@@ -88,6 +88,28 @@ class RecoverySchedule(unittest.TestCase):
         self.assertIsNone(timers.request(state(),self.path,1000,self.db))
         self.s['enabled'] = False
         self.assertIsNone(timers.request(self.s,self.path,1000,self.db))
+
+    def test_only_an_observed_early_offset_adjusts_the_nominal_time(self):
+        self.change(status='ACTIVE', next_run_at=1190000, next_run_nominal_at=1220000)
+        plan = timers.request(self.s, self.path, 1000, self.db)
+        self.assertEqual(plan['dueAt'], 1220)
+        self.assertEqual(plan['nominalAt'], 1251)
+        self.change(next_run_at=1250000, next_run_nominal_at=1220000)
+        self.assertEqual(timers.request(self.s, self.path, 1000, self.db)['nominalAt'], 1220)
+
+    def test_recovery_status_is_compact_read_only_and_excludes_send_history(self):
+        self.s['queue']['sent-record'] = {'status': 'sent', 'token': 'private-send-token'}
+        self.s['runtime']['unrelated'] = {'private': 'not needed for dispatch'}
+        core.atomic_write(self.path, self.s)
+        before = self.path.read_bytes()
+        result = subprocess.run([sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'),
+            '--state', str(self.path), 'recovery-status'], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        snapshot = json.loads(result.stdout)
+        self.assertEqual([x['turnId'] for x in snapshot['pending']], ['work-turn'])
+        self.assertNotIn('private-send-token', result.stdout)
+        self.assertNotIn('unrelated', result.stdout)
+        self.assertEqual(before, self.path.read_bytes())
 
     def test_hook_supplies_direct_update_and_verification_without_full_setup(self):
         core.atomic_write(self.path,self.s)

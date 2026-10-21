@@ -332,6 +332,7 @@ def main():
     init.add_argument('--expiry-hours', type=int)
     init.add_argument('--message-file', type=Path)
     subs.add_parser('status')
+    subs.add_parser('recovery-status')
     subs.add_parser('arm-plan')
     subs.add_parser('paths')
     subs.add_parser('disable')
@@ -416,13 +417,24 @@ def main():
             result = {'enabled': s['enabled'], 'settings': cfg, 'state': str(path)}
         else:
             if not path.exists():
-                if args.command == 'status':
+                if args.command in {'status', 'recovery-status'}:
                     print(json.dumps({'enabled': False, 'state': str(path), 'configured': False}))
                     return
                 raise ValueError('Plugin has not been enabled')
             s = load(path)
             if args.command == 'status':
                 result = s
+            elif args.command == 'recovery-status':
+                scope = s.get('selection', {'mode': 'automatic', 'threads': {}})
+                result = {'enabled': s['enabled'], 'accountId': s['accountId'],
+                    'controllerId': s['controllerId'], 'automationId': s.get('automationId'),
+                    'settings': {k: s['settings'][k] for k in ('limitId', 'threshold', 'delaySeconds')},
+                    'scope': {'mode': scope['mode'], 'threadIds': list(scope['threads']) if scope['mode'] == 'selected' else []},
+                    'excluded': s['excluded'],
+                    'pending': [{'key': key, **{k: item.get(k) for k in ('threadId', 'hostId', 'turnId',
+                        'windowKey', 'capturePolicy', 'capturedAt', 'resetAt', 'expiresAt')},
+                        'dueAt': item['resetAt']+s['settings']['delaySeconds']}
+                        for key, item in s['queue'].items() if item.get('status') == 'pending']}
             elif args.command == 'arm-plan':
                 result = {'request': recovery_schedule.request(s, path, now)}
             elif args.command == 'disable':
@@ -478,7 +490,7 @@ def main():
                     if item['threadId'] == args.thread and item['status'] == 'pending':
                         item['status'] = 'excluded'
                 result = {'excluded': s['excluded']}
-        if args.command not in {'status', 'arm-plan'}:
+        if args.command not in {'status', 'recovery-status', 'arm-plan'}:
             atomic_write(path, s)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
 

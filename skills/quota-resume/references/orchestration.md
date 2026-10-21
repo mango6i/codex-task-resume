@@ -16,6 +16,7 @@ Use absolute paths and actual process arguments. Do not interpolate titles/messa
 python <state.py> paths
 python <state.py> --state <absolute-state.json> init --account <id> --controller <id> --authorized --threshold 2 --delay-seconds 120 --check-seconds 60 --message-file <UTF-8.txt>
 python <state.py> --state <state.json> status
+python <state.py> --state <state.json> recovery-status
 python <state.py> --state <state.json> arm-plan
 python <state.py> --state <state.json> observe --input <observation.json>
 python <state.py> --state <state.json> set-automation --id <verified-id> --due-at <Unix-seconds>
@@ -74,7 +75,9 @@ Snapshot freshness: 90 seconds maximum, 5 seconds future tolerance. Refresh befo
 
 Use native structured `automation_update` with `arm-plan`'s prepared arguments. It reuses the native record's name, prompt, controller and notification policy. Never add `executionEnvironment` to an update: the current update schema rejects it. `mode=view` only displays a card and cannot enable a paused timer. Do not override models/thinking, edit native TOML/SQLite, or show raw recurrence syntax to the user.
 
-`arm-plan` requires captured pending turns and uses their ORIGINAL reset plus CURRENT delay. It adds five minutes to the nominal recurrence to reduce early native jitter. Convert to the CLIENT time zone when different from the returned local time. `set-automation` reads only native timer metadata and persists success only when actual next_run_at is ACTIVE, targets the saved controller, is not early, and is within the intended cycle. On rejection correct the SAME timer and verify again. An early recovery wake must re-arm, not consume or discard candidates. After the check pause it unless a real exhausted window requires one later wake; the daily recurrence must not remain as an idle poll.
+`arm-plan` requires captured pending turns and uses their ORIGINAL reset plus CURRENT delay. There is no fixed extra five-minute wait. Only an observed early native offset adjusts the nominal recurrence; re-read `arm-plan` after an early-wake verification failure and correct the SAME timer, with at most two corrections. Convert to the CLIENT time zone when different from the returned local time. `set-automation` reads only native timer metadata and persists success only when actual next_run_at is ACTIVE, targets the saved controller, is not early, and is within the intended cycle. An early recovery wake must re-arm, not consume or discard candidates. After the check pause it unless a real exhausted window requires one later wake; the daily recurrence must not remain as an idle poll.
+
+`recovery-status` is read-only and returns current ownership, saved scope/threshold/delay, exclusions and pending captured turns. It omits unrelated activity and terminal send history. During recovery, inspect only these candidates, reserve immediately before the native send, commit immediately afterward, and verify a new target turn before reporting execution. A controller wake or delivery receipt alone does not establish that the target is running.
 
 The detector persists an arm lease to avoid several active chats scheduling the same wake. The native skill must still search matching existing automations before create, because a process can fail after creating a schedule but before saving its ID.
 
