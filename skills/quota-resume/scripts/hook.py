@@ -200,11 +200,12 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         if not pending:
             s['armRequest'] = None
         owns_candidate = any(i['threadId'] == sid and i.get('turnId') == turn_id for i in pending)
-        if (event_name not in {'UserPromptSubmit', 'PostToolUse'} or not owns_candidate
+        import recovery_schedule
+        owns_work = not pending and sid in recovery_schedule.active_work(s, now)
+        if (event_name not in {'UserPromptSubmit', 'PostToolUse'} or not (owns_candidate or owns_work)
                 or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0)):
             core.atomic_write(path, s)
             return None
-        import recovery_schedule
         try:
             plan = recovery_schedule.request(s, path, now)
         except ValueError as error:
@@ -231,8 +232,9 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         s['nextArmAfter'] = now+60
         s['armRequest'] = {**plan, 'requestedAt': now, 'status': 'pending'}
         core.atomic_write(path, s)
-        context = ('The user enabled quota continuation and this turn was captured BELOW the saved threshold. '
-                   'Only arm its native recovery timer now; do not send continuation messages. '
+        context = ('The user enabled quota continuation. This active work turn needs an early native recovery check '
+                   'while quota is still available; this is NOT evidence that it needs continuation. '
+                   'Only arm the check now; do not send continuation messages or capture healthy/idle work. '
                    'Call native automation_update ONCE with these exact prepared arguments: '
                    +json.dumps(plan['arguments'], ensure_ascii=False)+'. '
                    'Never use mode=view: displaying a card does not enable a timer. '
@@ -246,7 +248,9 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                    'Only helper success verifies the actual ACTIVE timer, controller and next wake. '
                    'If timing is early, run arm-plan again for corrected arguments, update the SAME timer '
                    'and re-verify, with at most two corrections; preserve original dueAt. '
-                   'On failure retain the queue and report incomplete scheduling once. Then return to the task.')
+                   'On failure retain the queue and report incomplete scheduling once. '
+                   'On success return immediately to the user task without routine quota commentary. '
+                   'The eventual check must pause if no eligible captured quota-interrupted turn remains.')
         return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}
 
 

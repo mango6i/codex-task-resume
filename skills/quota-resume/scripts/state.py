@@ -455,6 +455,10 @@ def main():
                     raise
                 s['automationId'] = args.id
                 s['scheduledFor'] = args.due_at
+                prepared = s.get('armRequest') or {}
+                s['prearmResetAt'] = (prepared.get('resetAt')
+                    if prepared.get('reason') == 'active_work_prearm'
+                    and prepared.get('dueAt') == args.due_at else None)
                 s['scheduleWakeAt'] = timing['wakeAt']
                 s['scheduleVerifiedAt'] = now
                 s['scheduleError'] = None

@@ -81,7 +81,9 @@ Use native structured `automation_update` with `arm-plan`'s prepared arguments. 
 
 The detector persists an arm lease to avoid several active chats scheduling the same wake. The native skill must still search matching existing automations before create, because a process can fail after creating a schedule but before saving its ID.
 
-There is no guarantee if the quota is exhausted before a model can arm the native wake. The local queue survives; a later session/tool event can request catch-up. Likewise a closed/sleeping device has no guaranteed exact-minute recovery. If a wake misses its time and there are no later task events, the user may need to run the skill. Do not hide this limitation or introduce periodic model checks without the user's request.
+Eligible work requests early arming at UserPromptSubmit or PostToolUse while quota is still usable. `reason=active_work_prearm` is not a captured candidate: it only prepares the current reset-plus-delay check. If quota later runs out, Stop can record that exact turn and the prepared native check can run without any further user message. A fresh quota window must not move an outstanding original check forward. If no eligible captured turn remains at the wake, pause rather than keeping daily empty runs.
+
+There is still no guarantee if quota is already exhausted before any successful arm, hooks are untrusted, the controller was deleted, or the machine/client is unavailable. The local queue survives. The read-only worker does not independently create native schedules or send. Do not call early-arm tests proof of a full real-quota automatic recovery cycle, and do not introduce periodic model checks.
 
 ## Saved native heartbeat prompt
 

@@ -16,6 +16,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 ## Features
 
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
+- **Early recovery checks:** monitored work requests one native check while quota is usable, before an exhaustion failure can prevent scheduling. Healthy work is neither captured nor continued by this preparation.
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
@@ -66,11 +67,11 @@ Alternatively, attach the ZIP to a local Codex / ChatGPT Work chat with file acc
 2. Review and trust the plugin's hooks through the native client.
 3. Configure settings, explicitly enable continuation and save.
 4. Choose the scope and targets in Chats, then **Save selection**.
-5. While quota remains available, ask the controller to establish a native recovery check and confirm the schedule status.
+5. Trusted task-start and tool events request early arming while quota is usable. Confirm that the native recovery check is enabled.
 
 Settings and targets are managed globally. Each target chat does not need separate initialization.
 
-An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Keep the client and device running. The plugin service performs read-only checks and cannot independently create native schedules or send messages; initial scheduling and later re-arming still require native assistant capabilities.
+An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Retain the controller chat and keep the client and device running. Work events request early arming automatically. The read-only service still cannot independently create schedules or send messages, so this reduces missed recoveries without removing the controller dependency.
 
 ## Settings
 
