@@ -82,7 +82,7 @@ An established native recovery schedule runs in the background; neither the cont
 | Minimum check interval | 60 seconds | Shared throttle for service and task-event quota queries |
 | Automatic continuation | Off | Explicit user activation after initialization and hook review |
 
-For example, a reset at 19:13 and a two-minute delay give a planned check at 19:15. Execution requires a valid schedule. The green confirmation's timestamp is the settings save time.
+For example, a reset at 19:13 and a two-minute delay make recovery eligible from 19:15. The native scheduler may wake later. A timer is confirmed only after its active status, controller and actual next wake are verified; displaying a schedule card does not enable it. The green confirmation's timestamp is the settings save time.
 
 ## Language
 

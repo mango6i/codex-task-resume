@@ -109,6 +109,13 @@ def monitor_state(state, quota):
     pending = sum(item['status'] == 'pending' for item in (state or {}).get('queue', {}).values())
     enabled = bool(state and state['enabled'])
     scheduled = bool(state and state.get('automationId') and state.get('scheduledFor'))
+    schedule_error = (state or {}).get('scheduleError')
+    if scheduled:
+        try:
+            core.recovery_schedule.verify(state, state['automationId'], state['scheduledFor'], time.time())
+        except ValueError as error:
+            scheduled = False
+            schedule_error = str(error)
     threshold = (state or {}).get('settings', {}).get('threshold', 2)
     if not state:
         phase = 'setup_required'
@@ -124,7 +131,8 @@ def monitor_state(state, quota):
         phase = 'low_quota'
     return {'initialized': bool(state), 'enabled': enabled, 'threshold': threshold,
             'pendingCount': pending, 'scheduled': scheduled, 'phase': phase,
-            'scheduledFor': (state or {}).get('scheduledFor'),
+            'scheduledFor': (state or {}).get('scheduleWakeAt') if scheduled else None,
+            'scheduleError': schedule_error,
             'selectedCount': len(selection(state)['threads']),
             'lastCheckedAt': (state or {}).get('lastQuota', {}).get('observedAt'),
             'lastEventAt': max([v.get('seenAt', 0) for v in (state or {}).get('runtime', {}).values()] or [0]) or None,

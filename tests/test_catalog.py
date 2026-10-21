@@ -140,7 +140,9 @@ class Catalog(unittest.TestCase):
         state['queue']['example'] = {'status': 'pending'}
         self.assertEqual(catalog.monitor_state(state, {'remaining': 0})['phase'], 'pending_unscheduled')
         state['automationId'], state['scheduledFor'] = 'saved-record', 2000000120
-        self.assertEqual(catalog.monitor_state(state, {'remaining': 0})['phase'], 'schedule_record')
+        shown = catalog.monitor_state(state, {'remaining': 0})
+        self.assertEqual(shown['phase'], 'pending_unscheduled')
+        self.assertFalse(shown['scheduled'])
         state['enabled'] = False
         self.assertEqual(catalog.monitor_state(state, {'remaining': 0})['phase'], 'disabled')
         self.assertEqual(self.path.read_bytes(), original)

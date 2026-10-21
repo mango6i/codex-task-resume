@@ -16,6 +16,7 @@ Use absolute paths and actual process arguments. Do not interpolate titles/messa
 python <state.py> paths
 python <state.py> --state <absolute-state.json> init --account <id> --controller <id> --authorized --threshold 2 --delay-seconds 120 --check-seconds 60 --message-file <UTF-8.txt>
 python <state.py> --state <state.json> status
+python <state.py> --state <state.json> arm-plan
 python <state.py> --state <state.json> observe --input <observation.json>
 python <state.py> --state <state.json> set-automation --id <verified-id> --due-at <Unix-seconds>
 python <state.py> --state <state.json> reserve --thread <id> --window <windowKey> --input <fresh-observation.json>
@@ -71,9 +72,9 @@ Snapshot freshness: 90 seconds maximum, 5 seconds future tolerance. Refresh befo
 
 ## Scheduling
 
-Use native structured `automation_update`. Creation: mode=create, kind=heartbeat, destination=thread, executionEnvironment=local, targetThreadId=stored controllerId, status=ACTIVE, a durable natural-language prompt, and the host-supported recurrence representation. Do not set model/thinking overrides. On updates read the resolved record and preserve unrelated fields, notificationPolicy, name, and destination. Never write automation TOML yourself or display raw recurrence syntax to the user.
+Use native structured `automation_update` with `arm-plan`'s prepared arguments. It reuses the native record's name, prompt, controller and notification policy. Never add `executionEnvironment` to an update: the current update schema rejects it. `mode=view` only displays a card and cannot enable a paused timer. Do not override models/thinking, edit native TOML/SQLite, or show raw recurrence syntax to the user.
 
-Internally a temporary daily BYHOUR/BYMINUTE/BYSECOND rule targets the actual reset timestamp + configured delay in the client time zone. Verify the returned next run's date and time. After the check pause it, or reschedule it once to a later blocking-window reset. The daily rule is only a host-compatible way of scheduling a wake; it must not remain active after work is handled. An overdue queue can target the next minute and must still revalidate all conditions before sending.
+`arm-plan` requires captured pending turns and uses their ORIGINAL reset plus CURRENT delay. It adds five minutes to the nominal recurrence to reduce early native jitter. Convert to the CLIENT time zone when different from the returned local time. `set-automation` reads only native timer metadata and persists success only when actual next_run_at is ACTIVE, targets the saved controller, is not early, and is within the intended cycle. On rejection correct the SAME timer and verify again. An early recovery wake must re-arm, not consume or discard candidates. After the check pause it unless a real exhausted window requires one later wake; the daily recurrence must not remain as an idle poll.
 
 The detector persists an arm lease to avoid several active chats scheduling the same wake. The native skill must still search matching existing automations before create, because a process can fail after creating a schedule but before saving its ID.
 

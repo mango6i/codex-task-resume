@@ -269,7 +269,7 @@ function renderMonitor(data){
  el('task-monitor').replaceChildren();
  for(const [label,value] of [[t('剩余额度'),quota.remaining+'%'],[t('刷新时间'),reset],[t('触发阈值'),'< '+monitor.threshold+'%'],[t('已选对话'),monitor.selectedCount??taskSaved.size],[t('待续接'),monitor.pendingCount+t(' 个')],[t('最近成功检测'),monitor.lastCheckedAt?timeText(monitor.lastCheckedAt):t('暂无记录')],[t('检测服务'),t(monitor.serviceConnected?'服务已连接':'尚无服务心跳')],[t('最近任务事件'),monitor.lastEventAt?timeText(monitor.lastEventAt):t('暂无记录')],[t('续接排程'),monitor.scheduledFor?timeText(monitor.scheduledFor):t('尚未排程')]]){const item=document.createElement('div'),caption=document.createElement('small'),number=document.createElement('strong');caption.textContent=label;number.textContent=value;item.append(caption,number);el('task-monitor').append(item);}
  const detail={setup_required:t('先初始化一个全局控制对话；无需在每个目标对话发送设置指令。'),disabled:t('参数和对话选择已保留。监控开关关闭，后续不会自动发送。'),waiting_threshold:t('当前额度尚未低于 ')+monitor.threshold+t('%，暂不入队。只有低额度时实际运行的任务才会记录；勾选的空闲对话不会入队。目前没有恢复排程。'),low_quota:t('额度已低于阈值，但尚无待续接候选。需确认目标范围与检测脚本；目前没有恢复排程。'),pending_unscheduled:t('已有 ')+monitor.pendingCount+t(' 个候选，尚未安排恢复检查，不能保证到时自动续接。'),schedule_record:t('仅发现已保存的排程记录，尚未核验客户端是否启用；这不等于保证到时自动发送。')};
- el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'');
+ el('task-monitor-detail').textContent=(detail[phase]||t('请刷新并核对初始化、监控开关及排程记录。'))+(monitor.lastProbeError?' '+t('检测失败，请刷新额度并检查客户端连接。'):'')+(monitor.scheduleError?' '+t('排程未生效，请重新检查恢复计划。'):'');
  return taskPhases[phase]||t('状态待核验');
 }
 function taskMode(){return document.querySelector('input[name="task-mode"]:checked').value;}

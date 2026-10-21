@@ -80,7 +80,8 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         return None
     event_name = payload.get('hook_event_name')
     sid = payload.get('session_id')
-    if not isinstance(sid, str) or not sid or payload.get('source') == 'fork':
+    if (not isinstance(sid, str) or not sid or payload.get('source') in {'fork', 'subagent'}
+            or payload.get('parent_thread_id') or payload.get('is_subagent') is True):
         return None
     probe_token = None
     with core.locked(path):
@@ -175,26 +176,49 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 core.observe(s, {'observedAt': now, 'usage': fresh,
                                  'threads': core.runtime_threads(s, now)}, now)
                 pending = [i for i in s['queue'].values() if i['status'] == 'pending']
+        if not pending:
+            s['armRequest'] = None
         if event_name in {'SessionEnd', 'Interrupt'} or not pending or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0):
             core.atomic_write(path, s)
             return None
-        due = min(i['dueAt'] for i in pending)
-        # Successfully scheduled work requires no repeated model instruction.
-        if s.get('automationId') and s.get('scheduledFor') == due and now <= due+600:
+        import recovery_schedule
+        try:
+            plan = recovery_schedule.request(s, path, now)
+        except ValueError as error:
+            s['scheduleError'] = str(error)
             core.atomic_write(path, s)
             return None
+        if not plan:
+            core.atomic_write(path, s)
+            return None
+        due = plan['dueAt']
+        # Successfully scheduled work requires no repeated model instruction.
+        if s.get('automationId') and s.get('scheduledFor') == due:
+            try:
+                recovery_schedule.verify(s, s['automationId'], due, now)
+                core.atomic_write(path, s)
+                return None
+            except ValueError:
+                pass
         s['armLeaseUntil'] = now+120
-        s['nextArmAfter'] = now+600
+        s['nextArmAfter'] = now+60
+        s['armRequest'] = {**plan, 'requestedAt': now, 'status': 'pending'}
         core.atomic_write(path, s)
-        context = ('Task Resume quota detector has a persisted scheduling request. '
-                   'Use the installed $quota-resume skill in arm mode. '
-                   'Read state from '+json.dumps(str(path))+'. '
-                   'The user enabled this workflow and configured the threshold and exact message in that state. '
-                   'Use native thread tools to verify active candidates and create/update ONE native heartbeat '
-                   'targeted at the saved controllerId for the stored dueAt (or catch up if overdue). '
-                   'Do not send continuation messages during this arm step. '
-                   'Do not use the independent read-only server for desktop thread state. '
-                   'If quota/tools prevent scheduling, leave the queue persisted and report the limitation once.')
+        context = ('The user enabled quota continuation and this turn was captured BELOW the saved threshold. '
+                   'Only arm its native recovery timer now; do not send continuation messages. '
+                   'Call native automation_update ONCE with these exact prepared arguments: '
+                   +json.dumps(plan['arguments'], ensure_ascii=False)+'. '
+                   'Never use mode=view: displaying a card does not enable a timer. '
+                   'Do not add executionEnvironment, destination, model or thinking arguments. '
+                   'No further setup, full state dump, skill/reference reload or target inventory is needed '
+                   'for this timer-only step; final dispatch will revalidate every target natively. '
+                   'After confirmed native update success, run this argv: '
+                   +json.dumps(['python', str(Path(__file__).with_name('state.py')), '--state', str(path),
+                                'set-automation', '--id', str(plan['arguments'].get('id', '<returned automationId>')),
+                                '--due-at', str(due)], ensure_ascii=False)+'. '
+                   'Only helper success verifies the actual ACTIVE timer, controller and next wake. '
+                   'If timing is early, move the SAME timer later and re-verify; preserve original dueAt. '
+                   'On failure retain the queue and report incomplete scheduling once. Then return to the task.')
         if event_name == 'Stop':
             return {'decision': 'block', 'reason': context}
         if event_name in {'SessionEnd', 'Interrupt'}:

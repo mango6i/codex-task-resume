@@ -72,7 +72,8 @@ try {
     $null = Assert-TaskPath -Path $installedCache -Boundary $pluginBase
     foreach ($relative in @('.codex-plugin\plugin.json', '.mcp.json', 'server\settings_mcp.py', 'server\local_catalog.py',
             'ui\settings.html', 'ui\launcher.html', 'ui\translations.json', 'ui\manifest-en.json', 'server\i18n.py', 'server\monitor.py', 'skills\quota-resume\scripts\state.py',
-            'skills\quota-resume\scripts\hook.py', 'skills\quota-resume\scripts\preferences.py')) {
+            'skills\quota-resume\scripts\hook.py', 'skills\quota-resume\scripts\preferences.py',
+            'skills\quota-resume\scripts\recovery_schedule.py')) {
         $installedFile = Join-Path $installedCache $relative
         $expectedFile = Join-Path $pluginRoot $relative
         if (-not (Test-Path -LiteralPath $installedFile) -or

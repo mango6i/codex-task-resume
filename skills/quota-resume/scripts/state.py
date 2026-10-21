@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import time
 import uuid
+import recovery_schedule
 
 VERSION = 1
 TERMINAL = {'sent', 'reserved', 'uncertain', 'completed', 'user_paused',
@@ -300,6 +301,7 @@ def main():
     init.add_argument('--expiry-hours', type=int)
     init.add_argument('--message-file', type=Path)
     subs.add_parser('status')
+    subs.add_parser('arm-plan')
     subs.add_parser('paths')
     subs.add_parser('disable')
     observe_p = subs.add_parser('observe')
@@ -390,6 +392,8 @@ def main():
             s = load(path)
             if args.command == 'status':
                 result = s
+            elif args.command == 'arm-plan':
+                result = {'request': recovery_schedule.request(s, path, now)}
             elif args.command == 'disable':
                 s['enabled'] = False
                 event(s, now, 'disabled')
@@ -398,10 +402,22 @@ def main():
                 if not s['enabled']:
                     raise ValueError('Monitor is disabled')
                 number(args.due_at, 'due-at', 1)
+                try:
+                    timing = recovery_schedule.verify(s, args.id, args.due_at, now)
+                except ValueError as error:
+                    s['scheduleError'] = str(error)
+                    s['armLeaseUntil'] = 0
+                    s['nextArmAfter'] = now+60
+                    atomic_write(path, s)
+                    raise
                 s['automationId'] = args.id
                 s['scheduledFor'] = args.due_at
+                s['scheduleWakeAt'] = timing['wakeAt']
+                s['scheduleVerifiedAt'] = now
+                s['scheduleError'] = None
+                s['armRequest'] = None
                 s['armLeaseUntil'] = 0
-                result = {'automationId': args.id, 'scheduledFor': args.due_at}
+                result = {'automationId': args.id, 'scheduledFor': args.due_at, **timing}
             elif args.command in {'observe', 'reserve'}:
                 obs = read_json(args.input)
                 result = observe(s, obs, now)
@@ -431,7 +447,7 @@ def main():
                     if item['threadId'] == args.thread and item['status'] == 'pending':
                         item['status'] = 'excluded'
                 result = {'excluded': s['excluded']}
-        if args.command != 'status':
+        if args.command not in {'status', 'arm-plan'}:
             atomic_write(path, s)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
 
