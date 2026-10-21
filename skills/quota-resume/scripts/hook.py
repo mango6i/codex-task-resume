@@ -4,13 +4,13 @@ import json
 import os
 from pathlib import Path
 import queue
-import shutil
 import subprocess
 import sys
 import threading
 import time
 import uuid
 from queue import Empty
+from runtime_paths import find_codex
 
 # Load the sibling state helper without modifying global import paths.
 import importlib.util
@@ -20,9 +20,7 @@ spec.loader.exec_module(core)
 
 
 def read_usage(codex=None):
-    executable = codex or shutil.which('codex')
-    if not executable:
-        raise ValueError('Codex CLI unavailable; local checks disabled')
+    executable = codex or find_codex()
     # Independent read-only server: never use its thread status for desktop state.
     proc = subprocess.Popen([executable, 'app-server', '--stdio'],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,

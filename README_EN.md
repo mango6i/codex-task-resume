@@ -46,7 +46,7 @@ These screenshots use isolated test data. Chat titles, quota values and times ar
 
 ## Installation
 
-Requires **Windows, Python 3.10+, Codex CLI**, and a Codex / ChatGPT Work client supporting local plugins.
+Requires **Windows, Python 3.10+**, and a Codex / ChatGPT Work client supporting local plugins. The installer locates the client's bundled or separately installed Codex CLI without requiring manual PATH changes.
 
 1. Download and extract `codex-task-resume-1.0.zip` from [Releases](https://github.com/mango6i/codex-task-resume/releases).
 2. Fully exit the client and run `install.cmd` from the extracted folder.

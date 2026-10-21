@@ -46,7 +46,7 @@
 
 ## 安装
 
-需要 **Windows、Python 3.10+、Codex CLI**，以及支持本地插件的 Codex / ChatGPT Work 客户端。
+需要 **Windows、Python 3.10+**，以及支持本地插件的 Codex / ChatGPT Work 客户端。安装器会自动查找客户端附带或单独安装的 Codex CLI，无需手动修改 PATH。
 
 1. 从 [Releases](https://github.com/mango6i/codex-task-resume/releases) 下载 `codex-task-resume-1.0.zip` 并解压。
 2. 完全退出客户端，运行解压目录中的 `install.cmd`。

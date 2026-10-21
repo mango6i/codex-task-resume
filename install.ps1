@@ -14,9 +14,13 @@ $sourceFull = [IO.Path]::GetFullPath($sourceRoot).TrimEnd('\', '/')
 if ($sourceFull -eq $pluginRoot -or $sourceFull.StartsWith($pluginRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Run the installer from the extracted delivery folder.' }
 if ((Test-Path -LiteralPath $pluginRoot) -and -not (Test-TaskPlugin -Path $pluginRoot)) { throw 'Destination is not this plugin; no changes made.' }
 $pythonCommand = Get-Command python -ErrorAction Stop
-$codexCommand = Get-Command codex -ErrorAction Stop
 & $pythonCommand.Source -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)'
 if ($LASTEXITCODE -ne 0) { throw 'Python 3.10 or newer is required; previous installation preserved.' }
+$runtimeResult = & $pythonCommand.Source (Join-Path $sourceRoot 'skills\quota-resume\scripts\runtime_paths.py') --check
+$runtimeExit = $LASTEXITCODE
+$runtimeInfo = $runtimeResult | ConvertFrom-Json
+if ($runtimeExit -ne 0 -or -not $runtimeInfo.path) { throw $runtimeInfo.error }
+$codexCommand = [PSCustomObject]@{Source = $runtimeInfo.path}
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $backupRoot = "$pluginRoot.backup-$stamp"
 $stageRoot = Join-Path $pluginBase ('.task-resume-install-' + [Guid]::NewGuid().ToString('N'))
@@ -70,6 +74,7 @@ try {
     $mcpConfig.mcpServers.quota_settings.command = $pythonCommand.Source
     $mcpConfig.mcpServers.quota_settings.args = @((Join-Path $pluginRoot 'server\settings_mcp.py'))
     $mcpConfig.mcpServers.quota_settings.cwd = $pluginRoot
+    $mcpConfig.mcpServers.quota_settings | Add-Member -NotePropertyName env -NotePropertyValue @{TASK_RESUME_CODEX=$codexCommand.Source} -Force
     [IO.File]::WriteAllText((Join-Path $stageRoot '.mcp.json'), ($mcpConfig | ConvertTo-Json -Depth 20), $utf8)
     & $pythonCommand.Source (Join-Path $stageRoot 'server\i18n.py') --manifest (Join-Path $stageRoot '.codex-plugin\plugin.json')
     if ($LASTEXITCODE -ne 0) { throw 'Plugin display-language preparation failed; previous installation preserved.' }
@@ -93,6 +98,7 @@ try {
             'ui\settings.html', 'ui\launcher.html', 'ui\translations.json', 'ui\manifest-en.json', 'server\i18n.py', 'server\monitor.py', 'skills\quota-resume\scripts\state.py',
             'skills\quota-resume\scripts\hook.py', 'skills\quota-resume\scripts\preferences.py',
             'skills\quota-resume\scripts\recovery_schedule.py', 'skills\quota-resume\SKILL.md',
+            'skills\quota-resume\scripts\runtime_paths.py',
             'skills\quota-resume\references\orchestration.md')) {
         $installedFile = Join-Path $installedCache $relative
         $expectedFile = Join-Path $pluginRoot $relative

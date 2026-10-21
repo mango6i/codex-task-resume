@@ -3,12 +3,12 @@ import json
 import os
 from pathlib import Path
 import queue
-import shutil
 import subprocess
 import threading
 import time
 
 import state as core
+from runtime_paths import find_codex
 
 
 class Reader:
@@ -17,9 +17,7 @@ class Reader:
     total_timeout = 20
     def __enter__(self):
         self.deadline = time.monotonic()+getattr(self, 'total_timeout', float('inf'))
-        executable = shutil.which('codex')
-        if not executable:
-            raise ValueError('未找到 Codex CLI，无法读取本地对话。')
+        executable = find_codex()
         self.proc = subprocess.Popen([executable, 'app-server', '--stdio'], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)

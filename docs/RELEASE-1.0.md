@@ -11,11 +11,12 @@ Windows 本地 Codex / ChatGPT Work 的任务续接管理插件。
 - 修复停止事件产生额外轮次、无关项目收到排程指令的问题。
 - 保留旧版界面入口，兼容不同工具返回格式，读取失败时保留对话列表。
 - 更新失败时同时恢复原源码与缓存，保留用户设置和发送记录。
+- 自动查找客户端附带的 Codex CLI，修复双击安装器时找不到命令的问题。
 - 跟随系统显示中英文，支持浅色、深色及不同窗口大小。
 
 ## 安装
 
-下载 `codex-task-resume-1.0.zip` 与 `SHA256SUMS.txt`。确认已有 Python 3.10+ 和 Codex CLI，解压后完全退出客户端，运行 `install.cmd`，成功后重开客户端。也可以使用包内的本地助手安装提示词。已有设置与运行记录保留。
+下载 `codex-task-resume-1.0.zip` 与 `SHA256SUMS.txt`。确认已有 Python 3.10+，并至少启动过一次 Codex 客户端；解压后完全退出客户端，运行 `install.cmd`，成功后重开客户端。也可以使用包内的本地助手安装提示词。已有设置与运行记录保留。
 
 [中文使用说明](https://github.com/mango6i/codex-task-resume/blob/main/README.md) · [English](https://github.com/mango6i/codex-task-resume/blob/main/README_EN.md)
 
