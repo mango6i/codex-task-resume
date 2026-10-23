@@ -195,7 +195,7 @@ html,body{height:100%;overflow:hidden}
   <section class="help-block"><h2>常见问题</h2>
    <details><summary>设置“60 秒”，是不是每分钟都自动检查？</summary><p>插件服务连接期间按该间隔只读检查额度，任务事件共用节流。客户端退出、插件服务断开或休眠时停止；仅安装插件不能证明检测服务已连接。</p></details>
    <details><summary>19:13 刷新，设置等 2 分钟，是否一定 19:15 发送？</summary><p>19:15 是目标复查时间。插件还要确认额度已恢复、任务未完成且已停止，才会发送。客户端退出、电脑休眠、额度在安排检查前耗尽或周额度耗尽，都会导致延后或无法续接，不保证精确到某一分钟。</p></details>
-   <details><summary>会不会额外消耗额度？</summary><p>设置的读取与保存、本地只读额度查询不请求模型推理。安排恢复检查、检查任务上下文以及继续执行任务会使用正常额度。本版没有用模型做每分钟轮询，也不承诺全流程零消耗。</p></details>
+   <details><summary>会不会额外消耗额度？</summary><p>设置的读取与保存、本地只读额度查询不请求模型推理。恢复时只查询已记录对话的状态与额度错误，不读取项目上下文；已完成任务跳过。安排检查和继续执行任务会使用正常额度，本版不使用模型每分钟轮询。</p></details>
    <details><summary>如何修改提示词或彻底停止？</summary><p>改完参数点“保存设置”即可；修改普通参数不会擅自打开已关闭的开关。关闭自动续接开关可阻止后续发送；要同时暂停已安排的原生检查，在控制对话发送下方停止命令。</p><div class="command" style="margin-bottom:14px"><code id="command-stop">使用 $quota-resume 停止监控和自动续接。</code><button type="button" data-copy="command-stop"><svg class="ico" aria-hidden="true"><use href="#copy"/></svg>复制停止命令</button></div></details>
    <details><summary>安装后没有界面，或更新提示“拒绝访问”？</summary><p>先完全退出客户端，再运行本包的 <code>install.cmd</code>，安装成功后重新打开。管理入口位于插件详情的“设置 → 统一管理”，也可使用应用入口。若仍未显示，请检查插件服务是否已连接。</p></details>
    <details><summary>设置保存在哪里？更新会丢失吗？</summary><p>设置与队列保存在本机的 <code>%LOCALAPPDATA%/SkillHubQuotaResume/</code>。本包更新会保留参数、开关、队列和发送记录，不读取登录令牌，不把任务正文上传到第三方。</p></details>

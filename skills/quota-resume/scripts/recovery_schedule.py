@@ -1,10 +1,43 @@
 """Prepare native timer arguments and verify timing. Never mutates the native store."""
 from contextlib import closing
 import datetime
+import json
 import math
 import os
 from pathlib import Path
 import sqlite3
+import sys
+
+FAST_MARKER = 'Codex quota recovery fast path v1.'
+
+
+def fast_prompt(state_path):
+    """Reviewed local code orchestrates native tools inside the current model tool session."""
+    def quote(value):
+        return "'"+str(value).replace("'", "''")+"'"
+    helper = Path(__file__).with_name('recovery_fast.py').resolve()
+    command = '& '+quote(sys.executable)+' -X utf8 '+quote(helper)+' --state '+quote(state_path)+' bootstrap'
+    wrapper = ('const r=await tools.exec_command({cmd:'+json.dumps(command)+',max_output_tokens:12000});'
+               'if(r.exit_code!==0)throw Error(r.output);const b=JSON.parse(r.output);'
+               'text(await(new Function("tools","config","return (async()=>{"+b.code+"})()"))(tools,b.config));')
+    return (FAST_MARKER+' Perform ONE user-authorized recovery pass using CURRENT saved settings. '
+        'Execute the following JavaScript with functions.exec immediately. It loads this installed plugin\'s '
+        'reviewed native-tool runner, not an independent sender. Do not read the skill/reference, chat history, '
+        'source code or all-chat inventory before execution. The runner checks ONLY recorded target IDs, '
+        'same-turn native quota failure, completed/paused/active/blocked flags, live quota, original reset '
+        'plus current delay, and durable reserve/send-once/commit. It preserves the exact saved prompt and '
+        'never overrides models or permissions. It pauses this SAME timer after the pass unless an early '
+        'wake or exhausted window needs a later verified wake. No additional monitor or model polling.\n'
+        +wrapper+'\nStay quiet when unchanged or non-actionable. Notify only confirmed continuation '
+        '(distinguish delivery from a new running turn), meaningful failure or required user action. '
+        'If execution fails, report it once; never substitute history inspection or another dispatch backend.')
+
+
+def saved_prompt(record, state_path):
+    old = (record or {}).get('prompt')
+    generated = (FAST_MARKER, 'Use the quota-resume skill at ', 'Use $quota-resume at ',
+                 'Use the installed $quota-resume skill at ')
+    return fast_prompt(state_path) if not old or old.startswith(generated) else old
 
 
 def native_record(identifier, database=None):
@@ -28,8 +61,12 @@ def native_record(identifier, database=None):
 
 
 def pending(s, now):
+    scope = s.get('selection', {})
     return [i for i in s.get('queue', {}).values() if i.get('status') == 'pending'
-            and i.get('capturePolicy') == 2 and i.get('turnId') and i.get('expiresAt', 0) >= now]
+            and i.get('capturePolicy') == 2 and i.get('turnId') and i.get('expiresAt', 0) >= now
+            and i.get('hostId') == 'local' and i['threadId'] != s.get('controllerId')
+            and i['threadId'] not in s.get('excluded', [])
+            and (scope.get('mode') != 'selected' or i['threadId'] in scope.get('threads', {}))]
 
 
 def active_work(s, now):
@@ -118,18 +155,7 @@ def request(s, state_path, now, database=None):
                 early_offset = offset+1
     nominal = math.ceil(max(due, now+60)+early_offset)
     local = datetime.datetime.fromtimestamp(nominal, datetime.timezone.utc).astimezone()
-    helper = Path(__file__).with_name('state.py')
-    skill = helper.parent.parent/'SKILL.md'
-    prompt = (record or {}).get('prompt') or (
-        f'Use the quota-resume skill at {skill} and its orchestration reference for ONE recovery check. '
-        f'Durable state: {state_path}. Controller: {s["controllerId"]}, local. '
-        'Use CURRENT saved scope, threshold, delay and exact message. Require the captured turn to '
-        'have stopped from quota exhaustion and verify live native quota and task state. '
-        'Reserve before each native send, commit only confirmed success, never replay uncertain sends. '
-        'Never override models or permissions. If early, re-arm this SAME timer after the ORIGINAL '
-        'reset plus current delay and verify its actual wake. After one pass pause this timer unless '
-        'a real exhausted window blocks recovery. No daily idle runs or periodic model polling. '
-        'Stay quiet when no action is needed.')
+    prompt = saved_prompt(record, state_path)
     args = {'mode': 'update' if record else 'create', 'kind': 'heartbeat',
             'name': (record or {}).get('name') or 'Codex 任务续接 · 额度恢复检查',
             'prompt': prompt, 'status': 'ACTIVE', 'targetThreadId': s['controllerId'],

@@ -16,6 +16,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 ## Features
 
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
+- **Fast recovery:** query only recorded targets and native quota-failure flags without reading project history or scanning every chat. Completed tasks are skipped; exact saved prompts and persistent deduplication are preserved.
 - **Early recovery checks:** monitored work requests one native check while quota is usable, before an exhaustion failure can prevent scheduling. Healthy work is neither captured nor continued by this preparation.
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
@@ -95,7 +96,7 @@ Chat titles, project paths, saved prompts and newlines remain unchanged.
 
 **Why are there zero candidates after selecting chats?** Selection only limits the allowed scope and never enqueues or starts chats. Capture requires an identified work turn actually observed running at low quota in this window. A saved selection and an established schedule are separate states.
 
-**Does “Turn ended” mean the task is complete?** It describes the latest task event only. Native status and context are checked before sending. Completed, active, paused, blocked, archived and ambiguous tasks are skipped.
+**Does “Turn ended” mean the task is complete?** It describes the latest task event only. Only recorded chats are checked through native turn status and usage-limit errors; no history is read. Completed, active, paused, blocked, archived and ambiguous tasks are skipped.
 
 **What if quota refresh fails?** The query retries once. Recent successful data is explicitly marked as historical; otherwise the panel shows unavailable and you can retry later. Historical display data never authorizes sending.
 

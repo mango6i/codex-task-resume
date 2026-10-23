@@ -237,7 +237,7 @@ def expire(s, now):
     return changes
 
 
-def observe(s, obs, now):
+def observe(s, obs, now, *, capture=True):
     if not s['enabled']:
         return {'enabled': False, 'due': [], 'scheduleMode': 'disabled', 'nextWakeAt': None}
     q, threads = validate_observation(obs, s, now)
@@ -250,7 +250,7 @@ def observe(s, obs, now):
     settings = s['settings']
     s['lastQuota'] = {**q, 'observedAt': now}
     changes = expire(s, now)
-    if q['remaining'] < settings['threshold'] and now < q['reset']:
+    if capture and q['remaining'] < settings['threshold'] and now < q['reset']:
         for t in threads.values():
             if not eligible(s, t) or t.get('status') != 'active':
                 continue
@@ -315,6 +315,17 @@ def observe(s, obs, now):
             'pendingCount': len(pending)}
 
 
+def reserve(s, obs, thread, window, now):
+    result = observe(s, obs, now, capture=False)
+    match = next((i for i in result['due'] if i['threadId'] == thread and i['windowKey'] == window), None)
+    if match is None:
+        return {'accepted': False, **({'reason': result['reason']} if result.get('reason') else {})}
+    item = s['queue'][match['key']]
+    token = uuid.uuid4().hex
+    item.update(status='reserved', token=token, reservedAt=now, reservedMessage=s['settings']['message'])
+    return {'accepted': True, 'token': token, 'threadId': thread, 'hostId': 'local', 'message': item['reservedMessage']}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--state', type=Path)
@@ -338,10 +349,10 @@ def main():
     subs.add_parser('disable')
     observe_p = subs.add_parser('observe')
     observe_p.add_argument('--input', type=Path, required=True)
-    reserve = subs.add_parser('reserve')
-    reserve.add_argument('--thread', required=True)
-    reserve.add_argument('--window', required=True)
-    reserve.add_argument('--input', type=Path, required=True)
+    reserve_p = subs.add_parser('reserve')
+    reserve_p.add_argument('--thread', required=True)
+    reserve_p.add_argument('--window', required=True)
+    reserve_p.add_argument('--input', type=Path, required=True)
     commit = subs.add_parser('commit')
     commit.add_argument('--token', required=True)
     commit.add_argument('--outcome', choices=['sent', 'uncertain'], required=True)
@@ -467,18 +478,8 @@ def main():
                 result = {'automationId': args.id, 'scheduledFor': args.due_at, **timing}
             elif args.command in {'observe', 'reserve'}:
                 obs = read_json(args.input)
-                result = observe(s, obs, now)
-                if args.command == 'reserve':
-                    match = next((i for i in result['due'] if i['threadId'] == args.thread
-                                  and i['windowKey'] == args.window), None)
-                    result = {'accepted': False} if match is None else {'accepted': True}
-                    if match:
-                        item = s['queue'][match['key']]
-                        token = uuid.uuid4().hex
-                        item.update(status='reserved', token=token, reservedAt=now,
-                                    reservedMessage=s['settings']['message'])
-                        result.update(token=token, threadId=args.thread, hostId='local',
-                                      message=item['reservedMessage'])
+                result = (reserve(s, obs, args.thread, args.window, now) if args.command == 'reserve'
+                          else observe(s, obs, now))
             elif args.command == 'commit':
                 item = next((i for i in s['queue'].values() if i.get('token') == args.token), None)
                 if not item or item['status'] != 'reserved':

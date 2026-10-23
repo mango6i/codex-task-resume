@@ -76,6 +76,28 @@ class RecoverySchedule(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'delay changed'):
             timers.verify(self.s,'existing',1220,1000,self.db)
 
+    def test_generated_prompts_migrate_to_native_fast_runner_but_custom_prompt_is_preserved(self):
+        old = ('Use the quota-resume skill at old/SKILL.md and its orchestration reference '
+               'for ONE recovery check.')
+        for prompt in [None, old, 'Use $quota-resume at old/SKILL.md', timers.FAST_MARKER+' old code']:
+            with self.subTest(prompt=prompt):
+                self.change(prompt=prompt)
+                value = timers.request(self.s,self.path,1000,self.db)['arguments']['prompt']
+                self.assertTrue(value.startswith(timers.FAST_MARKER))
+                self.assertIn('recovery_fast.py',value)
+                self.assertIn('new Function',value)
+                self.assertNotIn('read_thread',value)
+        self.change(prompt='My custom timer instructions')
+        self.assertEqual(timers.request(self.s,self.path,1000,self.db)['arguments']['prompt'],
+                         'My custom timer instructions')
+
+    def test_out_of_scope_candidates_cannot_keep_an_empty_check_alive(self):
+        self.s['excluded'] = ['task']
+        self.assertIsNone(timers.request(self.s,self.path,1000,self.db))
+        self.s['excluded'] = []
+        self.s['selection'] = {'mode':'selected','threads':{}}
+        self.assertIsNone(timers.request(self.s,self.path,1000,self.db))
+
     def test_recovery_plan_keeps_original_reset_after_live_quota_refresh(self):
         core.observe(self.s, observation(1220,0,2000,'notLoaded','unknown'),1220)
         plan = timers.request(self.s,self.path,1220,self.db)
