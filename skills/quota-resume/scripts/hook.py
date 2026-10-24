@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import uuid
+import urllib.request
 from queue import Empty
 from runtime_paths import find_codex
 
@@ -19,12 +20,26 @@ core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
 
 
+def quota_environment():
+    """Give the read-only child the configured Windows proxy, without global changes."""
+    env = os.environ.copy()
+    if os.name == 'nt':
+        # urllib also reads Windows Internet Settings when no proxy env is set.
+        # Preserve explicit upper/lower-case env overrides, including empty ones.
+        for scheme, value in urllib.request.getproxies().items():
+            key = scheme.lower()+'_proxy'
+            if scheme.lower() in {'http', 'https', 'no'} and not any(k.lower() == key for k in env):
+                env[key.upper()] = value
+    return env
+
+
 def read_usage(codex=None):
     executable = codex or find_codex()
     # Independent read-only server: never use its thread status for desktop state.
     proc = subprocess.Popen([executable, 'app-server', '--stdio'],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        text=True, encoding='utf-8', creationflags=(subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0))
+        text=True, encoding='utf-8', env=quota_environment(),
+        creationflags=(subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0))
     replies = queue.Queue()
     def reader():
         try:

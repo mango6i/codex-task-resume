@@ -14,6 +14,8 @@ Use absolute paths and actual process arguments. Do not interpolate titles/messa
 
 The fast runner sends observations through `recovery_fast.py --payload-base64` using ASCII-encoded JSON. Never put native error text directly in a PowerShell literal: curly apostrophes such as the one in `You’ve` are also delimiters. Startup paths use ASCII JSON decoded after shell parsing, preserving Unicode and quotes. `--json` remains for legacy/manual use; it is not the automated transport. A helper process failure reports the action and exit code and never authorizes sending.
 
+After at most two failed native quota reads in the same pass, `recovery_fast.py read-quota` may query the existing read-only account endpoint once. It returns newly read usage and its timestamp without opening durable task state. The child process inherits Windows system proxy settings when explicit proxy environment overrides are absent. It never supplies desktop thread status or dispatch. The runner rejects missing or stale data, and the normal account/reset/quota checks remain mandatory before reservation. No persistent model polling or alternative sender is introduced.
+
 ```text
 python <state.py> paths
 python <state.py> --state <absolute-state.json> init --account <id> --controller <id> --authorized --threshold 2 --delay-seconds 120 --check-seconds 60 --message-file <UTF-8.txt>

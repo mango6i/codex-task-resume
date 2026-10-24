@@ -1,14 +1,27 @@
 // Executed only by the native functions tool. Never starts an independent server.
-const decode = r => {
-  if (!r || r.isError) throw Error('Native tool failed');
+const decode = (r, operation = 'Native tool') => {
+  if (!r || r.isError) {
+    const detail = r?.content?.filter(c => c.type === 'text').map(c => c.text).join(' ');
+    throw Error(operation + ': ' + (detail || 'no result').replace(/\s+/g, ' ').slice(0, 600));
+  }
   if (r.structuredContent) return r.structuredContent;
   if (Array.isArray(r.content)) {
     for (const c of r.content) if (c.type === 'text') {
       try { return JSON.parse(c.text); } catch (_) {}
     }
-    throw Error('Native JSON result unavailable');
+    throw Error(operation + ': JSON result unavailable');
   }
   return r;
+};
+// Only read operations may retry, once in this pass. Sends and reservations
+// never go through this helper; uncertainty still prevents replay.
+const readNative = async (operation, read) => {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { return decode(await read(), operation); }
+    catch (error) {
+      if (attempt === 1) throw Error(operation + ' failed after 2 read attempts: ' + String(error));
+    }
+  }
 };
 // PowerShell treats smart apostrophes as quote delimiters too. Only ASCII
 // JSON/base64 enters command syntax; Unicode is reconstructed after parsing.
@@ -35,6 +48,21 @@ const local = async (action, payload = {}) => {
     + String(r.exit_code ?? 'unfinished') + '): ' + (r.output || 'no diagnostic output'));
   return JSON.parse(r.output);
 };
+const readQuota = async () => {
+  try {
+    return await readNative('Live quota', () => tools.mcp__codex_app__get_usage_limits({}));
+  } catch (nativeError) {
+    try {
+      const fallback = await local('read-quota');
+      if (!fallback.usage || !Number.isFinite(fallback.observedAt)
+          || Math.abs(Date.now()/1000-fallback.observedAt) > 90)
+        throw Error('Fresh read-only quota unavailable');
+      return fallback.usage;
+    } catch (error) {
+      throw Error(String(nativeError) + '; read-only quota fallback: ' + String(error));
+    }
+  }
+};
 const report = {sent: [], skipped: [], failures: []};
 const plan = await local('plan');
 for (const target of plan.targets) {
@@ -42,12 +70,12 @@ for (const target of plan.targets) {
   let reservation, capturedTurnId;
   try {
     // Only this recorded target. No inventory scan, history read or task-text analysis.
-    const [rawUsage, rawStatus, clock] = await Promise.all([
-      tools.mcp__codex_app__get_usage_limits({}),
-      tools.mcp__codex_app__wait_threads({targets: [{threadId: target.threadId, hostId: 'local'}], timeoutMs: 0}),
-      tools.clock__curr_time({})
+    const [usage, snapshot] = await Promise.all([
+      readQuota(),
+      readNative('Recorded task status', () => tools.mcp__codex_app__wait_threads({
+        targets: [{threadId: target.threadId, hostId: 'local'}], timeoutMs: 0}))
     ]);
-    const usage = decode(rawUsage), snapshot = decode(rawStatus);
+    const clock = await tools.clock__curr_time({});
     const poll = snapshot.polls?.find(p => p.thread?.id === target.threadId);
     if (!poll) throw Error('Recorded native target unavailable');
     capturedTurnId = poll.latestTurn?.id;

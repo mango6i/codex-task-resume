@@ -18,6 +18,25 @@ from test_behavior import state, observation
 
 
 class ClientCompatibility(unittest.TestCase):
+    def test_windows_system_proxy_is_passed_to_child_without_changing_parent(self):
+        with patch.dict(os.environ, {'PATH': 'fixture'}, clear=True), patch.object(hook.os, 'name', 'nt'), \
+                patch.object(hook.urllib.request, 'getproxies', return_value={'https': 'http://127.0.0.1:7897', 'no': 'localhost'}):
+            child = hook.quota_environment()
+            self.assertEqual(child['HTTPS_PROXY'], 'http://127.0.0.1:7897')
+            self.assertEqual(child['NO_PROXY'], 'localhost')
+            self.assertNotIn('HTTPS_PROXY', os.environ)
+
+    def test_explicit_proxy_overrides_including_empty_values_are_preserved(self):
+        with patch.dict(os.environ, {'https_proxy': '', 'NO_PROXY': 'private.local'}, clear=True), \
+                patch.object(hook.os, 'name', 'nt'), \
+                patch.object(hook.urllib.request, 'getproxies', return_value={'https': 'http://system:7897', 'no': 'localhost'}):
+            self.assertEqual(hook.quota_environment(), dict(os.environ))
+
+    def test_non_windows_proxy_environment_is_unchanged(self):
+        with patch.object(hook.os, 'name', 'posix'), patch.object(hook.urllib.request, 'getproxies') as provider:
+            self.assertEqual(hook.quota_environment(), dict(os.environ))
+            provider.assert_not_called()
+
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

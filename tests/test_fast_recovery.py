@@ -6,9 +6,18 @@ from unittest.mock import patch
 from test_behavior import state, observation
 import state as core
 import recovery_fast as fast
+import hook
 
 
 class FastRecovery(unittest.TestCase):
+    def test_quota_fallback_reads_fresh_account_data_without_touching_state(self):
+        usage = observation(1220, 0, 2000)['usage']
+        with patch.object(hook, 'read_usage', return_value=usage) as reader, \
+                patch.object(fast.time, 'time', return_value=1220), \
+                patch.object(core, 'load', side_effect=AssertionError('No state read for quota fallback')):
+            self.assertEqual(fast.read_quota(), {'usage': usage, 'observedAt': 1220})
+            reader.assert_called_once_with()
+
     def setUp(self):
         self.s = state()
         core.observe(self.s, observation(), 1000)

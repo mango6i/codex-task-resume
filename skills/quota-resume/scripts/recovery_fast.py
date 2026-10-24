@@ -29,6 +29,13 @@ def unwrap(value):
     return value
 
 
+def read_quota():
+    """Fresh account quota only; no desktop state, reservation or sending."""
+    import hook
+    usage = hook.read_usage()
+    return {'usage': usage, 'observedAt': time.time()}
+
+
 def native_observation(s, payload, now):
     """Only saved targets and native state/error flags; never inspect conversation text."""
     usage = unwrap(payload['usage'])
@@ -125,7 +132,7 @@ def finish(s, path, now):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path)
-    parser.add_argument('action', choices=['bootstrap', 'plan', 'reserve', 'finish', 'ack-pause', 'commit', 'ack-arm'])
+    parser.add_argument('action', choices=['bootstrap', 'read-quota', 'plan', 'reserve', 'finish', 'ack-pause', 'commit', 'ack-arm'])
     data = parser.add_mutually_exclusive_group()
     data.add_argument('--json', default=None, help='Legacy/manual JSON input')
     data.add_argument('--payload-base64', help='ASCII transport for UTF-8 JSON; never shell-interpreted')
@@ -138,6 +145,11 @@ def main():
     if args.action == 'bootstrap':
         print(json.dumps({'code': Path(__file__).with_name('native_dispatch.js').read_text(encoding='utf-8'),
             'config': {'python': sys.executable, 'script': str(Path(__file__).resolve()), 'state': str(path)}}))
+        return
+    if args.action == 'read-quota':
+        # The existing read-only account endpoint is a quota fallback only.
+        # It cannot read desktop task state or send, and does not open state.json.
+        print(json.dumps(read_quota(), ensure_ascii=False))
         return
     with core.locked(path):
         s = core.load(path)

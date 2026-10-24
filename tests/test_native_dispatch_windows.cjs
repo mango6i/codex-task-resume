@@ -68,13 +68,28 @@ async function scenario(shell, mode) {
       assert.equal(fs.statSync(actualState).ino, fs.statSync(saved).ino,
         'Expanded and short Windows paths must identify the same state file');
     }
-    let sends = 0, snapshots = 0;
+    let sends = 0, snapshots = 0, quotaReads = 0;
+    const fixtureUsage = () => ({accountId: 'fixture-account', ordinaryUsageAllowed: true,
+      rateLimitsByLimitId: {codex: {primary: {usedPercent: 0, windowDurationMins: 300, resetsAt: now + 18000},
+        secondary: {usedPercent: 20, windowDurationMins: 10080, resetsAt: now + 604800}}}});
     const tools = {
-      exec_command: async ({cmd}) => execute(shell, cmd),
+      exec_command: async ({cmd}) => {
+        if (cmd.includes(' read-quota --payload-base64 ')) {
+          // Quota endpoints are fixtures too; never start an independent server in tests.
+          if (mode !== 'quota_fallback') return {exit_code: 2, output: 'Fixture quota endpoint unavailable'};
+          return {exit_code: 0, output: JSON.stringify({usage: fixtureUsage(), observedAt: Date.now()/1000})};
+        }
+        return execute(shell, cmd);
+      },
       clock__curr_time: async () => ({current_time: new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC'}),
-      mcp__codex_app__get_usage_limits: async () => envelope({accountId: 'fixture-account', ordinaryUsageAllowed: true,
-        rateLimitsByLimitId: {codex: {primary: {usedPercent: 0, windowDurationMins: 300, resetsAt: now + 18000},
-          secondary: {usedPercent: 20, windowDurationMins: 10080, resetsAt: now + 604800}}}}),
+      mcp__codex_app__get_usage_limits: async () => {
+        quotaReads++;
+        if (['quota_unavailable', 'quota_fallback'].includes(mode) || (mode === 'quota_retry' && quotaReads === 1))
+          return {isError: true, content: [{type: 'text', text: 'Could not read current usage limits. Try again later.'}]};
+        return envelope({accountId: 'fixture-account', ordinaryUsageAllowed: true,
+          rateLimitsByLimitId: {codex: {primary: {usedPercent: 0, windowDurationMins: 300, resetsAt: now + 18000},
+            secondary: {usedPercent: 20, windowDurationMins: 10080, resetsAt: now + 604800}}}});
+      },
       mcp__codex_app__wait_threads: async ({targets}) => {
         assert.deepEqual(targets, [{threadId: 'fixture-work', hostId: 'local'}]);
         const started = snapshots++ > 0;
@@ -98,17 +113,24 @@ async function scenario(shell, mode) {
     };
     const report = await run(tools, {python, script: path.join(scripts, 'recovery_fast.py'), state: saved});
     const final = JSON.parse(fs.readFileSync(saved, 'utf8')).queue.captured;
-    assert.equal(sends, mode === 'completed' ? 0 : 1, JSON.stringify(report));
-    assert.equal(final.status, mode === 'success' ? 'sent' : mode);
-    assert.equal(report.sent.length, mode === 'success' ? 1 : 0);
-    assert.equal(report.failures.length, mode === 'uncertain' ? 1 : 0, JSON.stringify(report));
-    if (mode === 'success') assert.equal(report.sent[0].running, true);
+    const success = ['success', 'quota_retry', 'quota_fallback'].includes(mode);
+    const noSend = mode === 'completed' || mode === 'quota_unavailable';
+    assert.equal(sends, noSend ? 0 : 1, JSON.stringify(report));
+    assert.equal(final.status, success ? 'sent' : mode === 'quota_unavailable' ? 'pending' : mode);
+    assert.equal(report.sent.length, success ? 1 : 0);
+    assert.equal(report.failures.length, ['uncertain', 'quota_unavailable'].includes(mode) ? 1 : 0, JSON.stringify(report));
+    if (success) assert.equal(report.sent[0].running, true);
+    if (mode.startsWith('quota_')) assert.equal(quotaReads, 2);
+    if (mode === 'quota_unavailable') {
+      assert.equal(final.token, undefined, 'A failed quota read must leave the queue unreserved');
+      assert.match(report.failures[0].reason, /Live quota failed after 2 read attempts:.*Could not read current usage limits/);
+    }
   } finally { removeFixture(root); }
 }
 
 (async () => {
   for (const shell of shells) {
-    for (const mode of ['success', 'completed', 'uncertain']) await scenario(shell, mode);
+    for (const mode of ['success', 'completed', 'uncertain', 'quota_retry', 'quota_unavailable', 'quota_fallback']) await scenario(shell, mode);
     console.log(path.basename(shell) + ': real Unicode-path bootstrap, native quota error, exact prompt, completed skip and no uncertain retry passed.');
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
