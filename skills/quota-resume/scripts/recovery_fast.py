@@ -1,5 +1,6 @@
 """Deterministic recovery from native status envelopes. No server, UI or model calls."""
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -125,10 +126,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', type=Path)
     parser.add_argument('action', choices=['bootstrap', 'plan', 'reserve', 'finish', 'ack-pause', 'commit', 'ack-arm'])
-    parser.add_argument('--json', default='{}')
+    data = parser.add_mutually_exclusive_group()
+    data.add_argument('--json', default=None, help='Legacy/manual JSON input')
+    data.add_argument('--payload-base64', help='ASCII transport for UTF-8 JSON; never shell-interpreted')
     args = parser.parse_args()
     path = (args.state or core.data_dir()/'state.json').resolve()
-    payload = json.loads(args.json)
+    raw = (base64.b64decode(args.payload_base64, validate=True).decode('utf-8')
+           if args.payload_base64 is not None else args.json or '{}')
+    payload = json.loads(raw)
     now = time.time()
     if args.action == 'bootstrap':
         print(json.dumps({'code': Path(__file__).with_name('native_dispatch.js').read_text(encoding='utf-8'),

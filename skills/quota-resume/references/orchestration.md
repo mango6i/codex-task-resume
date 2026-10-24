@@ -12,6 +12,8 @@ Before first activation, saved preferences are kept beside state in `preferences
 
 Use absolute paths and actual process arguments. Do not interpolate titles/messages into executable shell syntax. Prefer UTF-8 JSON/text files. Global options go before the subcommand.
 
+The fast runner sends observations through `recovery_fast.py --payload-base64` using ASCII-encoded JSON. Never put native error text directly in a PowerShell literal: curly apostrophes such as the one in `You’ve` are also delimiters. Startup paths use ASCII JSON decoded after shell parsing, preserving Unicode and quotes. `--json` remains for legacy/manual use; it is not the automated transport. A helper process failure reports the action and exit code and never authorizes sending.
+
 ```text
 python <state.py> paths
 python <state.py> --state <absolute-state.json> init --account <id> --controller <id> --authorized --threshold 2 --delay-seconds 120 --check-seconds 60 --message-file <UTF-8.txt>

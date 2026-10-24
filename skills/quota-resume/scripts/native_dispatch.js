@@ -10,12 +10,29 @@ const decode = r => {
   }
   return r;
 };
+// PowerShell treats smart apostrophes as quote delimiters too. Only ASCII
+// JSON/base64 enters command syntax; Unicode is reconstructed after parsing.
+const asciiJson = value => JSON.stringify(value).replace(/[\u007f-\uffff]/g,
+  ch => '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0'));
 const quote = s => "'" + String(s).replace(/'/g, "''") + "'";
+const pathArg = s => '(ConvertFrom-Json ' + quote(asciiJson(String(s))) + ')';
+const encodePayload = value => {
+  const data = asciiJson(value), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  for (let i = 0; i < data.length; i += 3) {
+    const a = data.charCodeAt(i), b = data.charCodeAt(i + 1), c = data.charCodeAt(i + 2);
+    result += alphabet[a >> 2] + alphabet[((a & 3) << 4) | ((b || 0) >> 4)]
+      + (i + 1 < data.length ? alphabet[((b & 15) << 2) | ((c || 0) >> 6)] : '=')
+      + (i + 2 < data.length ? alphabet[c & 63] : '=');
+  }
+  return result;
+};
 const local = async (action, payload = {}) => {
-  const cmd = '& ' + quote(config.python) + ' -X utf8 ' + quote(config.script)
-    + ' --state ' + quote(config.state) + ' ' + action + ' --json ' + quote(JSON.stringify(payload));
+  const cmd = '& ' + pathArg(config.python) + ' -X utf8 ' + pathArg(config.script)
+    + ' --state ' + pathArg(config.state) + ' ' + action + ' --payload-base64 ' + quote(encodePayload(payload));
   const r = await tools.exec_command({cmd, max_output_tokens: 2400});
-  if (r.exit_code !== 0) throw Error(r.output || 'Local recovery check failed');
+  if (r.exit_code !== 0) throw Error('Local ' + action + ' failed (exit '
+    + String(r.exit_code ?? 'unfinished') + '): ' + (r.output || 'no diagnostic output'));
   return JSON.parse(r.output);
 };
 const report = {sent: [], skipped: [], failures: []};
@@ -35,7 +52,11 @@ for (const target of plan.targets) {
     if (!poll) throw Error('Recorded native target unavailable');
     capturedTurnId = poll.latestTurn?.id;
     // Never forward conversation text into the helper or model output.
-    const flags = {polls: [{thread: poll.thread, latestTurn: poll.latestTurn,
+    const thread = poll.thread, turn = poll.latestTurn || {};
+    const flags = {polls: [{thread: {id: thread.id, hostId: thread.hostId, kind: thread.kind,
+      archived: thread.archived, isSubagent: thread.isSubagent, parentThreadId: thread.parentThreadId,
+      status: thread.status}, latestTurn: {id: turn.id, status: turn.status, startedAt: turn.startedAt,
+      completedAt: turn.completedAt, error: {message: turn.error?.message}},
       assistantPhase: poll.latestAssistantMessage?.phase}]};
     reservation = await local('reserve', {threadId: target.threadId, windowKey: target.windowKey,
       observedAt: Date.parse(clock.current_time.replace(' UTC', 'Z').replace(' ', 'T'))/1000,

@@ -14,7 +14,8 @@ FAST_MARKER = 'Codex quota recovery fast path v1.'
 def fast_prompt(state_path):
     """Reviewed local code orchestrates native tools inside the current model tool session."""
     def quote(value):
-        return "'"+str(value).replace("'", "''")+"'"
+        encoded = json.dumps(str(value), ensure_ascii=True).replace("'", "''")
+        return "(ConvertFrom-Json '"+encoded+"')"
     helper = Path(__file__).with_name('recovery_fast.py').resolve()
     command = '& '+quote(sys.executable)+' -X utf8 '+quote(helper)+' --state '+quote(state_path)+' bootstrap'
     wrapper = ('const r=await tools.exec_command({cmd:'+json.dumps(command)+',max_output_tokens:12000});'
