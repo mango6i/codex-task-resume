@@ -73,7 +73,7 @@ class Catalog(unittest.TestCase):
         self.assertFalse(result['sent'])
         self.assertFalse(result['scheduled'])
         self.assertEqual(state['queue'], {})
-        self.assertTrue(all(m in {'account/rateLimits/read', 'thread/read'} for m, _ in FakeReader.calls))
+        self.assertTrue(all(m in {'account/rateLimits/read', 'thread/list'} for m, _ in FakeReader.calls))
         catalog.update_selection(self.path, 'selected', [], FakeReader, now=1001)
         self.assertEqual(core.load(self.path)['queue'], {})
         catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1002)
@@ -125,6 +125,70 @@ class Catalog(unittest.TestCase):
         self.assertFalse(core.load(self.path)['enabled'])
         self.assertEqual(result['pendingCount'], 0)
         self.assertEqual(core.load(self.path)['selection']['threads']['task-a']['updatedAt'], 123)
+
+    def test_unreadable_historical_choice_does_not_block_valid_selection(self):
+        saved = core.load(self.path)
+        historical = {'title': 'Removed historical chat', 'project': str(ROOT), 'updatedAt': 10}
+        saved['selection'] = {'mode': 'automatic', 'threads': {'removed': historical}}
+        core.atomic_write(self.path, saved)
+        result = catalog.update_selection(self.path, 'selected', ['removed', 'task-a'], FakeReader, now=1000)
+        self.assertEqual(result['threadIds'], ['removed', 'task-a'])
+        self.assertEqual(result['unavailableThreadIds'], ['removed'])
+        current = core.load(self.path)
+        self.assertEqual(current['selection']['threads']['removed'], historical)
+        self.assertEqual(current['queue'], {})
+        self.assertIsNone(current.get('automationId'))
+        self.assertNotIn('thread/read', [method for method, _ in FakeReader.calls])
+        catalog.update_selection(self.path, 'selected', ['task-a'], FakeReader, now=1001)
+        original = self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError, '新选择'):
+            catalog.update_selection(self.path, 'selected', ['task-a', 'removed'], FakeReader, now=1002)
+        self.assertEqual(self.path.read_bytes(), original)
+
+    def test_unloaded_targets_are_validated_from_bounded_catalog_pages(self):
+        class PagedReader(FakeReader):
+            def call(self, method, params):
+                if method == 'thread/read':
+                    raise AssertionError('An independent server must not load desktop chats')
+                if method == 'thread/list':
+                    self.calls.append((method, params))
+                    if not params.get('cursor'):
+                        return {'data': [self.thread('task-a')], 'nextCursor': 'page-2'}
+                    return {'data': [self.thread('task-b')], 'nextCursor': None}
+                return super().call(method, params)
+        result = catalog.update_selection(self.path, 'selected', ['task-b', 'task-a'], PagedReader, now=1000)
+        self.assertEqual(result['threadIds'], ['task-b', 'task-a'])
+        self.assertEqual(result['unavailableThreadIds'], [])
+        self.assertEqual(len([m for m, _ in FakeReader.calls if m == 'thread/list']), 2)
+
+    def test_catalog_failure_or_repeated_cursor_keeps_selection_unchanged(self):
+        class BrokenReader(FakeReader):
+            failure = True
+            def call(self, method, params):
+                if method == 'thread/list':
+                    if self.failure:
+                        raise ValueError('catalog unavailable')
+                    return {'data': [], 'nextCursor': 'same-page'}
+                return super().call(method, params)
+        original = self.path.read_bytes()
+        for failure in [True, False]:
+            BrokenReader.failure = failure
+            with self.assertRaises(ValueError):
+                catalog.update_selection(self.path, 'selected', ['task-a'], BrokenReader)
+            self.assertEqual(self.path.read_bytes(), original)
+
+    def test_saving_scope_rejects_account_change_after_catalog_read(self):
+        class ChangedReader(FakeReader):
+            reads = 0
+            def call(self, method, params):
+                if method == 'account/rateLimits/read':
+                    self.reads += 1
+                    return usage('a' if self.reads == 1 else 'b')
+                return super().call(method, params)
+        original = self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError, '登录账号已改变'):
+            catalog.update_selection(self.path, 'selected', ['task-a'], ChangedReader)
+        self.assertEqual(self.path.read_bytes(), original)
 
     def test_monitor_distinguishes_waiting_threshold_pending_and_unverified_schedule(self):
         state = core.load(self.path)

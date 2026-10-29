@@ -302,6 +302,7 @@
   "刷新暂未成功，显示 {time} 的最近成功数据；稍后可重试。": "Refresh failed. Showing the last successful data from {time}; retry later.",
   "暂时无法连接额度服务，请稍后重试。": "The quota service is temporarily unavailable. Retry later.",
   "本地服务暂时无法读取数据，请稍后重试。": "The local service could not read the data. Retry later.",
+  "已保留 {count} 个暂未读取的历史选择；仅保存范围，不会入队或启动任务。": "Retained {count} unavailable historical selections as scope only; no tasks were queued or started.",
   "插件服务连接期间定期查询，与任务事件共用节流；断开后停止。": "The connected service checks periodically and shares throttling with task events. Checks stop on disconnect.",
   "请帮我把提供的 Codex 任务续接安装包安装到当前本地客户端。先阅读包内安装说明并检查依赖，再运行包内安装器，保留已有设置。安装后核对插件和管理入口；需要重启或审核脚本时告诉我。暂不开启自动续接。": "Install the Codex Task Resume package I provided into this local client. Read the bundled installation guide, check dependencies and run the installer. Preserve existing settings and verify the plugin and management entry. Tell me if a restart or hook review is needed. Leave automatic continuation disabled.",
   "，安装成功后重新打开。管理入口位于插件详情的“设置 → 统一管理”，也可使用应用入口。若仍未显示，请检查插件服务是否已连接。": " and reopen after installation succeeds. Use Management in plugin settings or the global app entry. If it remains missing, check the plugin service connection.",

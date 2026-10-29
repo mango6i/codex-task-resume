@@ -9,6 +9,7 @@ import time
 
 import state as core
 from runtime_paths import find_codex
+from hook import quota_environment
 
 
 class Reader:
@@ -20,6 +21,7 @@ class Reader:
         executable = find_codex()
         self.proc = subprocess.Popen([executable, 'app-server', '--stdio'], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
+            env=quota_environment(),
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
         self.messages = queue.Queue()
         self.identifier = 0
@@ -63,7 +65,9 @@ class Reader:
                 raise ValueError('本地只读连接已关闭。')
             if message.get('id') == identifier:
                 if 'error' in message:
-                    raise ValueError('本地服务暂时无法读取数据，请稍后重试。')
+                    code = message['error'].get('code') if isinstance(message['error'], dict) else None
+                    detail = f'（{method}，{code}）' if isinstance(code, int) else f'（{method}）'
+                    raise ValueError('本地服务读取失败'+detail+'，未修改已保存内容。')
                 return message['result']
             if time.monotonic() >= deadline:
                 raise ValueError('本地读取超时。')
@@ -206,13 +210,42 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
         quota = core.quota(usage, before['settings']['limitId'])
         if quota['accountId'] != before['accountId']:
             raise ValueError('登录账号已改变，未保存选择。')
-        targets = {}
-        for identifier in identifiers:
-            raw = reader.call('thread/read', {'threadId': identifier, 'includeTurns': False})['thread']
-            item = normalize(raw, before)
-            if item['id'] != identifier or not item['selectable']:
-                raise ValueError('所选对话已不可用或不在支持范围内，未保存选择。')
-            targets[identifier] = {k: item[k] for k in ['title', 'project', 'updatedAt']}
+        # A separate server cannot thread/read every desktop conversation: an
+        # unloaded or removed old choice otherwise rejects the entire save.
+        # Validate new choices from catalog metadata; retain historical choices
+        # only as an allowlist, never as activity, candidates or send authority.
+        chosen = selection(before)['threads']
+        remaining = set(identifiers)
+        targets, unavailable, cursors = {}, [], set()
+        cursor = None
+        while remaining:
+            params = {'limit': 100, 'sortKey': 'updated_at', 'archived': False,
+                      'useStateDbOnly': True, 'sourceKinds': ['cli', 'vscode', 'exec', 'appServer']}
+            if cursor is not None:
+                params['cursor'] = cursor
+            result = reader.call('thread/list', params)
+            for raw in result['data']:
+                identifier = raw.get('id')
+                if identifier not in remaining:
+                    continue
+                item = normalize(raw, before)
+                if not item['selectable']:
+                    raise ValueError('所选对话不在支持范围内，未保存选择。')
+                targets[identifier] = {k: item[k] for k in ['title', 'project', 'updatedAt']}
+                remaining.remove(identifier)
+            cursor = result.get('nextCursor')
+            if not cursor:
+                break
+            if cursor in cursors:
+                raise ValueError('本地对话分页异常，未保存选择。')
+            cursors.add(cursor)
+        for identifier in remaining:
+            if (identifier not in chosen or identifier == before['controllerId']
+                    or identifier in before['excluded']):
+                raise ValueError('新选择的对话已不可用，请刷新列表后重新选择。未保存选择。')
+            targets[identifier] = chosen[identifier]
+            unavailable.append(identifier)
+        targets = {identifier: targets[identifier] for identifier in identifiers}
         usage = reader.call('account/rateLimits/read', {})
         if core.quota(usage, before['settings']['limitId'])['accountId'] != before['accountId']:
             raise ValueError('登录账号已改变，未保存选择。')
@@ -234,7 +267,8 @@ def update_selection(path, mode, identifiers, reader_factory=Reader, now=None):
         core.atomic_write(path, state)
     quota = core.quota(usage, state['settings']['limitId'])
     status = monitor_state(state, quota)
-    return {'mode': mode, 'threadIds': list(targets), 'pendingCount': sum(i['status'] == 'pending' for i in state['queue'].values()),
+    return {'mode': mode, 'threadIds': list(targets), 'unavailableThreadIds': sorted(unavailable),
+            'pendingCount': sum(i['status'] == 'pending' for i in state['queue'].values()),
             'scheduled': status['scheduled'], 'sent': False,
             'quota': {'remaining': quota['remaining'], 'resetAt': quota['reset']},
             'monitor': status}

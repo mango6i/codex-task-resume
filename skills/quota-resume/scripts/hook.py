@@ -216,8 +216,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
             s['armRequest'] = None
         owns_candidate = any(i['threadId'] == sid and i.get('turnId') == turn_id for i in pending)
         import recovery_schedule
-        owns_work = not pending and sid in recovery_schedule.active_work(s, now)
-        if (event_name not in {'UserPromptSubmit', 'PostToolUse'} or not (owns_candidate or owns_work)
+        if (event_name not in {'UserPromptSubmit', 'PostToolUse'} or not owns_candidate
                 or now < s.get('armLeaseUntil', 0) or now < s.get('nextArmAfter', 0)):
             core.atomic_write(path, s)
             return None
@@ -247,8 +246,8 @@ def handle(path, payload, usage_provider=read_usage, now=None):
         s['nextArmAfter'] = now+60
         s['armRequest'] = {**plan, 'requestedAt': now, 'status': 'pending'}
         core.atomic_write(path, s)
-        context = ('The user enabled quota continuation. This active work turn needs an early native recovery check '
-                   'while quota is still available; this is NOT evidence that it needs continuation. '
+        context = ('The user enabled quota continuation. This exact work turn was recorded below the saved '
+                   'quota threshold and needs a native recovery check. '
                    'Only arm the check now; do not send continuation messages or capture healthy/idle work. '
                    'Call native automation_update ONCE with these exact prepared arguments: '
                    +json.dumps(plan['arguments'], ensure_ascii=False)+'. '

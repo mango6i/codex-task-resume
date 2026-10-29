@@ -17,7 +17,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
 - **Fast recovery:** query only recorded targets and native quota-failure flags without reading project history or scanning every chat. Completed tasks are skipped; exact saved prompts and persistent deduplication are preserved.
-- **Early recovery checks:** monitored work requests one native check while quota is usable, before an exhaustion failure can prevent scheduling. Healthy work is neither captured nor continued by this preparation.
+- **Threshold-only scheduling:** a native recovery check requires a running turn recorded strictly below the saved threshold. Healthy quota and quota exactly at the threshold do not create empty checks.
 - **Local quota checks:** query quota while the plugin service is connected, including idle periods, without minute-by-minute model polling.
 - **Actual reset timestamps:** show the account API's five-hour reset time and the planned check after your saved delay.
 - **Chat management:** search, refresh, select targets, select the current list or clear selections.
@@ -68,11 +68,11 @@ Alternatively, attach the ZIP to a local Codex / ChatGPT Work chat with file acc
 2. Review and trust the plugin's hooks through the native client.
 3. Configure settings, explicitly enable continuation and save.
 4. Choose the scope and targets in Chats, then **Save selection**.
-5. Trusted task-start and tool events request early arming while quota is usable. Confirm that the native recovery check is enabled.
+5. Trusted task-start and tool events record running work and request one check only when quota is strictly below the threshold. Confirm that the native recovery check is enabled.
 
 Settings and targets are managed globally. Each target chat does not need separate initialization.
 
-An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Retain the controller chat and keep the client and device running. Work events request early arming automatically. The read-only service still cannot independently create schedules or send messages, so this reduces missed recoveries without removing the controller dependency.
+An established native recovery schedule runs in the background; neither the controller chat nor the settings panel needs to remain visible. Retain the controller chat and keep the client and device running. Only work recorded below the threshold requests a check. The read-only service cannot independently create schedules or send messages; automatic wake is not guaranteed if quota is exhausted before scheduling succeeds.
 
 ## Settings
 

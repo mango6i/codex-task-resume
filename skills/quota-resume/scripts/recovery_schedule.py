@@ -70,30 +70,13 @@ def pending(s, now):
             and (scope.get('mode') != 'selected' or i['threadId'] in scope.get('threads', {}))]
 
 
-def active_work(s, now):
-    """Work can justify an early check, never a continuation candidate."""
-    scope = s.get('selection', {})
-    return [tid for tid, rt in s.get('runtime', {}).items()
-            if tid != s.get('controllerId') and tid not in s.get('excluded', [])
-            and (scope.get('mode') != 'selected' or tid in scope.get('threads', {}))
-            and rt.get('active') and rt.get('purpose') == 'task' and rt.get('turnId')
-            and isinstance(rt.get('startedAt'), (int, float))
-            and not isinstance(rt.get('startedAt'), bool)
-            and 0 < rt['startedAt'] <= now+5
-            and 0 <= now-rt.get('seenAt', 0) <= 90]
-
-
 def verify(s, identifier, due, now, database=None):
     if not s.get('enabled'):
         raise ValueError('Monitor is disabled')
     items = pending(s, now)
+    if not items:
+        raise ValueError('No recorded low-quota work; no recovery timer authorized')
     if items and due < min(i['resetAt']+s['settings']['delaySeconds'] for i in items):
-        raise ValueError('Saved delay changed; recalculate the original recovery time')
-    prepared = s.get('armRequest') or {}
-    prearm_reset = (prepared.get('resetAt') if prepared.get('reason') == 'active_work_prearm'
-                    and prepared.get('dueAt') == due else s.get('prearmResetAt'))
-    if (not items and isinstance(prearm_reset, (int, float))
-            and due < prearm_reset+s['settings']['delaySeconds']):
         raise ValueError('Saved delay changed; recalculate the original recovery time')
     record = native_record(identifier, database)
     if (not record or record['kind'] != 'heartbeat' or record['status'] != 'ACTIVE'
@@ -112,22 +95,13 @@ def verify(s, identifier, due, now, database=None):
 
 def request(s, state_path, now, database=None):
     items = pending(s, now)
-    if not s.get('enabled'):
+    if not s.get('enabled') or not items:
         return None
     q = s.get('lastQuota', {})
-    work = active_work(s, now)
-    fresh_quota = (q.get('accountId') == s['accountId']
-                   and 0 <= now-q.get('observedAt', 0) <= 90)
-    # Arm while the task still has quota, not after its final model request
-    # has already failed. This does NOT capture healthy work or send to it.
-    if items:
-        due = min(i['resetAt']+s['settings']['delaySeconds'] for i in items)
-        reason = 'captured_work'
-    elif work and fresh_quota and q.get('allowed') and q.get('reset', 0) > now:
-        due = q['reset']+s['settings']['delaySeconds']
-        reason = 'active_work_prearm'
-    else:
-        return None
+    # Recorded work below the threshold is the only scheduling authority.
+    # Healthy work must never create empty model-powered recovery checks.
+    due = min(i['resetAt']+s['settings']['delaySeconds'] for i in items)
+    reason = 'captured_work'
     if (q.get('accountId') == s['accountId'] and 0 <= now-q.get('observedAt', 0) <= 90
             and not q.get('allowed') and q.get('blockingReset', 0) > now):
         due = max(due, q['blockingReset']+s['settings']['delaySeconds'])
@@ -137,13 +111,6 @@ def request(s, state_path, now, database=None):
         raise ValueError('Saved timer belongs to another workflow; no update authorized')
     last_run = (record or {}).get('last_run_at')
     saved_due = s.get('scheduledFor')
-    if (reason == 'active_work_prearm' and record and record['status'] == 'ACTIVE'
-            and isinstance(saved_due, (int, float)) and not isinstance(saved_due, bool)
-            and isinstance(s.get('prearmResetAt'), (int, float))
-            and (not isinstance(last_run, (int, float)) or last_run/1000 < saved_due)):
-        # Quota can refresh before reset+delay. An outstanding original wake
-        # must still happen; moving it into the next quota window loses it.
-        due = min(due, s['prearmResetAt']+s['settings']['delaySeconds'])
     # Do not silently add five minutes to the user's reset delay. Compensate
     # only for an observed early native offset, then verify the actual wake.
     early_offset = 0
