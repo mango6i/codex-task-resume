@@ -41,6 +41,43 @@ class RecoverySchedule(unittest.TestCase):
             for key, value in values.items():
                 c.execute('UPDATE automations SET '+key+'=?', (value,))
 
+    def test_migrated_databases_accept_identical_owned_timer_rows(self):
+        second = self.db.with_name('codex.db')
+        second.write_bytes(self.db.read_bytes())
+        with patch.dict(os.environ, {'CODEX_HOME': str(self.path.parent)}):
+            self.assertEqual(timers.native_record('existing'), timers.native_record('existing', self.db))
+
+    def test_migrated_databases_require_native_file_revision_when_rows_diverge(self):
+        second = self.db.with_name('codex.db')
+        for database in [self.db]:
+            with closing(sqlite3.connect(database)) as c, c:
+                c.execute('ALTER TABLE automations ADD COLUMN updated_at INTEGER DEFAULT 10')
+        second.write_bytes(self.db.read_bytes())
+        with closing(sqlite3.connect(second)) as c, c:
+            c.execute("UPDATE automations SET status='ACTIVE',updated_at=20,next_run_at=1220000,next_run_nominal_at=1220000")
+        metadata = self.path.parent/'automations/existing/automation.toml'
+        metadata.parent.mkdir(parents=True)
+        values = {'id': 'existing', 'kind': 'heartbeat', 'status': 'ACTIVE',
+                  'target_thread_id': 'controller', 'name': 'Existing monitor', 'prompt': 'Preserve saved prompt'}
+        metadata.write_text('\n'.join(k+' = '+json.dumps(v) for k, v in values.items())+'\nupdated_at = 20\n', encoding='utf-8')
+        with patch.dict(os.environ, {'CODEX_HOME': str(self.path.parent)}):
+            self.assertEqual(timers.native_record('existing')['status'], 'ACTIVE')
+            metadata.write_text(metadata.read_text().replace('updated_at = 20', 'updated_at = 99'))
+            with self.assertRaisesRegex(ValueError, 'ambiguous'):
+                timers.native_record('existing')
+
+    def test_paused_migration_can_omit_history_but_not_change_wake_or_ownership(self):
+        second = self.db.with_name('codex.db')
+        second.write_bytes(self.db.read_bytes())
+        self.change(last_run_at=900000)
+        with patch.dict(os.environ, {'CODEX_HOME': str(self.path.parent)}):
+            record = timers.native_record('existing')
+            self.assertEqual(record['status'], 'PAUSED')
+            self.assertIsNone(record['last_run_at'])
+            self.change(next_run_at=1220000)
+            with self.assertRaisesRegex(ValueError, 'ambiguous'):
+                timers.native_record('existing')
+
     def test_viewed_paused_timer_cannot_be_verified_or_shown_scheduled(self):
         self.s['scheduledFor'] = 1220
         with self.assertRaisesRegex(ValueError, 'paused'):

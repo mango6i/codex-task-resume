@@ -116,7 +116,7 @@ html,body{height:100%;overflow:hidden}
 <div id="panel-settings" role="tabpanel" aria-labelledby="tab-settings">
  <div class="page">
   <div class="intro"><div><div class="eyebrow">YOUR CONTINUATION RULE</div><h1>设置你的续接方式</h1><p>额度恢复后，按你保存的提示词接着处理未完成任务。</p></div><span class="saved-pill" id="saved-pill"><span class="dot"></span><span id="save-state">正在读取</span></span></div>
-  <section class="quota-strip" aria-label="五小时额度"><div><small>剩余额度</small><strong id="live-quota">—</strong></div><div><small>实际刷新时间</small><strong id="live-reset">暂未获取</strong></div><div><small>预计复查时间</small><strong id="live-due">暂未获取</strong></div><button type="button" class="button" id="quota-refresh">刷新额度</button><p id="quota-note">刷新时间来自账号额度接口；预计复查须有原生排程。</p></section>
+  <section class="quota-strip" aria-label="五小时额度"><div><small>剩余额度</small><strong id="live-quota">—</strong></div><div><small>实际刷新时间</small><strong id="live-reset">暂未获取</strong></div><div><small>预计复查时间</small><strong id="live-due">暂未获取</strong></div><div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="button" id="account-bind" title="切换账号后点击，保留参数并关闭自动续接。">绑定当前账号</button><button type="button" class="button" id="quota-refresh">刷新额度</button></div><p id="quota-note">刷新时间来自账号额度接口；预计复查须有原生排程。</p></section>
   <div id="load-error" class="error-box" hidden><h2>暂时无法读取设置</h2><p id="load-error-text"></p><button type="button" class="button" id="retry">重新读取</button></div>
   <div class="workspace">
    <form id="settings" novalidate>
@@ -249,18 +249,30 @@ function renderQuota(){
  el('example-note').textContent=note;
 }
 async function refreshQuota(){
- if(quotaBusy)return;quotaBusy=true;el('quota-refresh').disabled=true;el('quota-note').textContent=t('正在读取额度…');
+ if(quotaBusy||busy)return;quotaBusy=true;el('quota-refresh').disabled=true;el('account-bind').disabled=true;el('quota-note').textContent=t('正在读取额度…');
  try{const response=await call('quota.read',{});liveQuota=resultData(response);renderQuota();el('quota-note').textContent=liveQuota.stale?t('刷新暂未成功，显示 {time} 的最近成功数据；稍后可重试。',{time:timeText(liveQuota.quota.readAt)}):t('刷新时间来自账号额度接口；预计复查须有原生排程。');}
  catch(error){liveQuota=null;renderQuota();el('quota-note').textContent=t('读取额度失败：')+t(error.message);}
- finally{quotaBusy=false;el('quota-refresh').disabled=false;}
+ finally{quotaBusy=false;controls();}
 }
 el('quota-refresh').addEventListener('click',refreshQuota);
+el('account-bind').addEventListener('click',async()=>{
+ if(!ready||busy||taskBusy||quotaBusy)return;
+ busy=true;hideFeedback();controls();el('account-bind').textContent=t('正在绑定…');
+ try{
+  const data=resultData(await call('account.rebind',{confirmed:true}));
+  if(data.changed){saved.monitoringEnabled=false;el('monitoringEnabled').checked=false;}
+  liveQuota=data;renderQuota();
+  const detail=data.changed?t('已绑定当前登录账号。参数和选择范围已保留，旧记录已备份。请开启自动续接并保存设置。'):t('当前账号已绑定，无需重复关联。');
+  el('quota-note').textContent=detail;setStatus(detail,'success');feedback(t(data.changed?'账号绑定成功':'账号已绑定'),detail);
+ }catch(error){setStatus(t('绑定失败：')+error.message,'error');feedback(t('账号未重新绑定'),error.message,'error');}
+ finally{busy=false;el('account-bind').textContent=t('绑定当前账号');controls();}
+});
 setInterval(()=>{if(initialized&&!document.hidden)refreshQuota();},60000);
-function controls(){const dirty=!!saved&&Object.keys(changes()).length>0;el('save').disabled=!ready||busy||!dirty;el('reset').disabled=!ready||busy||!dirty;el('fields').disabled=!ready||busy;el('settings').setAttribute('aria-busy',String(busy||loading));const confirmed=ready&&!busy&&!dirty&&!!lastSavedAt;el('save').dataset.saved=String(confirmed);el('save-label').textContent=busy?t('正在保存…'):confirmed?t('已保存'):t('保存设置');preview();}
+function controls(){const dirty=!!saved&&Object.keys(changes()).length>0;el('save').disabled=!ready||busy||!dirty;el('reset').disabled=!ready||busy||!dirty;el('fields').disabled=!ready||busy;el('account-bind').disabled=!ready||busy||quotaBusy;el('quota-refresh').disabled=busy||quotaBusy;el('settings').setAttribute('aria-busy',String(busy||loading));const confirmed=ready&&!busy&&!dirty&&!!lastSavedAt;el('save').dataset.saved=String(confirmed);el('save-label').textContent=busy?t('正在保存…'):confirmed?t('已保存'):t('保存设置');preview();}
 function apply(v){if(!v||ids.some(id=>!(id in v)))throw new Error(t('设置数据不完整，未修改已保存参数。'));saved={...v};for(const id of ids){if(id==='monitoringEnabled')el(id).checked=!!v[id];else el(id).value=v[id];}ready=true;controls();}
 function resultData(result){if(result?.isError)throw new Error(result.content?.find(x=>x.type==='text')?.text||t('读取失败'));if(result?.structuredContent&&typeof result.structuredContent==='object')return result.structuredContent;for(const item of result?.content||[]){if(item.type!=='text')continue;try{const data=JSON.parse(item.text);if(data&&typeof data==='object'&&!Array.isArray(data))return data;}catch{}}throw new Error(t('客户端没有返回有效设置。'));}
 function unpack(result){const data=resultData(result);if(!data?.values)throw new Error(t('客户端没有返回有效设置。'));const setup=result?._meta?.['skillhub/setup'];if(setup){el('setup-text').textContent=setup.configured?t('控制对话已初始化 · 脚本信任请在客户端确认'):t('尚未初始化控制对话');el('setup-state').dataset.state=setup.configured?'configured':'needed';}else{el('setup-text').textContent=t('脚本信任与初始化请按指南确认');}return data.values;}
-async function call(name,args){return request('tools/call',{name,arguments:args},['quota.read','tasks.list','tasks.select'].includes(name)?35000:15000);}
+async function call(name,args){return request('tools/call',{name,arguments:args},['quota.read','tasks.list','tasks.select','account.rebind'].includes(name)?40000:15000);}
 let taskLoaded=false,taskBusy=false,taskRows=[],taskNext=null,taskChosen=new Set(),taskSaved=new Set(),taskSavedMode='automatic',taskConfirmed=false;
 const taskPhases={setup_required:t('尚未初始化'),disabled:t('监控已关闭'),waiting_threshold:t('等待低额度触发'),low_quota:t('已达低额度条件'),pending_unscheduled:t('候选已记录 · 未排程'),schedule_record:t('恢复检查已排程')};
 function renderMonitor(data){

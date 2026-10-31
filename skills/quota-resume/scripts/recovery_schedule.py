@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import sqlite3
 import sys
 
@@ -43,19 +44,63 @@ def saved_prompt(record, state_path):
 
 def native_record(identifier, database=None):
     if database is None:
-        root = Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')/'sqlite'
-        candidates = [root/name for name in ('codex-dev.db', 'codex.db') if (root/name).is_file()]
-        if len(candidates) != 1:
+        home = Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')
+        candidates = [home/'sqlite'/name for name in ('codex-dev.db', 'codex.db') if (home/'sqlite'/name).is_file()]
+        if not candidates:
             raise ValueError('Native schedule store is missing or ambiguous; client compatibility is not verified')
-        database = candidates[0]
+        if len(candidates) == 1:
+            return native_record(identifier, candidates[0])
+        # A client upgrade can retain both databases. Identical rows are safe
+        # to read; divergent rows require the native timer file's exact update
+        # revision and ownership fields. Never prefer by filename or mtime.
+        try:
+            rows = [_native_row(identifier, p, revision=True) for p in candidates]
+            if rows[0] == rows[1]:
+                return _without_revision(rows[0])
+            # Migration may omit old execution history. Paused copies with no
+            # wake and otherwise identical metadata have the same effective
+            # state; do not use either copy's historical last-run timestamp.
+            if all(row and row['status'] == 'PAUSED' and row['next_run_at'] is None
+                   and row['next_run_nominal_at'] is None for row in rows):
+                policies = [{k: v for k, v in row.items() if k != 'last_run_at'} for row in rows]
+                if policies[0] == policies[1]:
+                    return {**_without_revision(rows[0]), 'last_run_at': None}
+            if not re.fullmatch(r'[A-Za-z0-9_-]+', identifier):
+                raise ValueError('Invalid native timer identity')
+            saved = (home/'automations'/identifier/'automation.toml').read_text(encoding='utf-8')
+            revision = re.search(r'^updated_at\s*=\s*(\d+)\s*$', saved, re.M)
+            metadata = {}
+            for key in ('id', 'kind', 'status', 'target_thread_id', 'name', 'prompt'):
+                match = re.search(r'^'+key+r'\s*=\s*("[^\r\n]*")\s*$', saved, re.M)
+                if not match:
+                    raise ValueError('Native timer metadata unavailable')
+                metadata[key] = json.loads(match[1])
+            matches = [row for row in rows if row and revision
+                       and row.get('_revision') == int(revision[1])
+                       and all(row.get(key) == value for key, value in metadata.items())]
+            if len(matches) == 1:
+                return _without_revision(matches[0])
+        except (ValueError, OSError):
+            pass
+        raise ValueError('Native schedule store is ambiguous; client compatibility is not verified')
+    return _native_row(identifier, database)
+
+
+def _without_revision(row):
+    return {k: v for k, v in row.items() if k != '_revision'} if row else None
+
+
+def _native_row(identifier, database, revision=False):
     database = Path(database)
     if not database.is_file():
         raise ValueError('Native schedule metadata unavailable; recovery timing is not verified')
     try:
         with closing(sqlite3.connect(database.resolve().as_uri()+'?mode=ro', uri=True, timeout=.5)) as conn:
             conn.row_factory = sqlite3.Row
+            columns = {row['name'] for row in conn.execute('PRAGMA table_info(automations)')}
+            extra = ',updated_at AS _revision' if revision and 'updated_at' in columns else ''
             row = conn.execute('SELECT id,name,prompt,kind,status,target_thread_id,notification_policy,'
-                               'next_run_at,next_run_nominal_at,last_run_at FROM automations WHERE id=?', (identifier,)).fetchone()
+                               'next_run_at,next_run_nominal_at,last_run_at'+extra+' FROM automations WHERE id=?', (identifier,)).fetchone()
             return dict(row) if row else None
     except sqlite3.Error:
         raise ValueError('Native schedule metadata unavailable; recovery timing is not verified') from None

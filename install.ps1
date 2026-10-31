@@ -94,7 +94,7 @@ try {
     & $codexCommand.Source plugin add "$($sourceManifest.name)@$($market.name)" --json
     if ($LASTEXITCODE -ne 0) { throw '更新未完成。若提示拒绝访问，请完全退出客户端后重试；运行中的设置服务可能占用缓存。' }
     $null = Assert-TaskPath -Path $installedCache -Boundary $pluginBase
-    foreach ($relative in @('.codex-plugin\plugin.json', '.mcp.json', 'hooks\hooks.json', 'server\settings_mcp.py', 'server\local_catalog.py',
+    foreach ($relative in @('.codex-plugin\plugin.json', '.mcp.json', 'hooks\hooks.json', 'server\settings_mcp.py', 'server\local_catalog.py', 'server\account_binding.py',
             'ui\settings.html', 'ui\launcher.html', 'ui\translations.json', 'ui\manifest-en.json', 'server\i18n.py', 'server\monitor.py', 'skills\quota-resume\scripts\state.py',
             'skills\quota-resume\scripts\hook.py', 'skills\quota-resume\scripts\preferences.py',
             'skills\quota-resume\scripts\recovery_schedule.py', 'skills\quota-resume\SKILL.md',

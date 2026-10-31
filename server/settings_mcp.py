@@ -11,6 +11,7 @@ import preferences
 import local_catalog
 import i18n
 import monitor
+import account_binding
 
 VERSION = '1.0.0'
 SETTINGS_CAP = {'readTool': 'settings.read', 'updateTool': 'settings.update'}
@@ -95,6 +96,13 @@ def tools():
          'inputSchema': {'type': 'object', 'additionalProperties': False},
          'annotations': {'readOnlyHint': True, 'openWorldHint': False},
          '_meta': {'ui': {'visibility': ['app', 'model']}}},
+        {'name': 'account.rebind', 'title': '绑定当前登录账号',
+         'description': '仅由设置中的绑定按钮显式关联当前登录账号。备份旧状态、保留参数和选择，隔离旧候选，不开启监控或发送消息。',
+         'inputSchema': {'type': 'object', 'properties': {'confirmed': {'type': 'boolean', 'const': True}},
+                         'required': ['confirmed'], 'additionalProperties': False},
+         'annotations': {'readOnlyHint': False, 'idempotentHint': True, 'destructiveHint': False,
+                         'openWorldHint': False},
+         '_meta': {'ui': {'visibility': ['app']}}},
         {'name': 'tasks.list', 'title': '读取本地对话与排程',
          'description': '只读列出本机根对话、全局选择和实际排程，不调用模型。独立读取连接不能证明桌面任务已停止。',
          'inputSchema': {'type': 'object', 'properties': {'cursor': {'type': 'string'}}, 'additionalProperties': False},
@@ -169,6 +177,8 @@ def dispatch_raw(method, params, path):
                 result = {'values': preferences.update(path, args['set'])}
             elif name == 'quota.read' and not args:
                 result = local_catalog.read_quota(path)
+            elif name == 'account.rebind' and set(args) == {'confirmed'}:
+                result = account_binding.rebind(path, args['confirmed'])
             elif name == 'tasks.list' and not set(args)-{'cursor'}:
                 if 'cursor' in args and not isinstance(args['cursor'], str):
                     raise ValueError('分页参数无效')

@@ -172,7 +172,7 @@ def read_quota(path, reader_factory=Reader):
         raise ValueError('暂时无法连接额度服务，请稍后重试。')
     quota = core.quota(usage, (state or {}).get('settings', {}).get('limitId', 'codex'))
     if state and quota['accountId'] != state['accountId']:
-        raise ValueError('登录账号已改变，请先停止监控并重新关联。')
+        raise ValueError('登录账号已改变，请点击续接设置顶部的“绑定当前账号”。')
     return {'quota': {'remaining': quota['remaining'], 'resetAt': quota['reset'], 'readAt': time.time()}, 'stale': False,
             'monitor': monitor_state(state, quota)}
 
@@ -183,7 +183,7 @@ def list_threads(path, cursor=None, reader_factory=Reader):
         usage = reader.call('account/rateLimits/read', {})
         quota = core.quota(usage, (state or {}).get('settings', {}).get('limitId', 'codex'))
         if state and quota['accountId'] != state['accountId']:
-            raise ValueError('登录账号已改变，请先停止监控并重新关联。')
+            raise ValueError('登录账号已改变，请点击续接设置顶部的“绑定当前账号”。')
         params = {'limit': 100, 'sortKey': 'updated_at', 'archived': False, 'useStateDbOnly': True,
                   'sourceKinds': ['cli', 'vscode', 'exec', 'appServer']}
         if cursor is not None:
