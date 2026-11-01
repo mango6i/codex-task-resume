@@ -65,6 +65,7 @@ def native_observation(s, payload, now):
         assessment = 'awaiting_input'
     elif (turn.get('status') == 'failed' and re.search(
             r"hit your usage limit|usage limit (?:reached|exceeded)|quota (?:exhausted|exceeded)|"
+            r"workspace is out of credits|"
             r"(?:额度|用量).*(?:耗尽|已用尽|上限)",
             str((turn.get('error') or {}).get('message', '')), re.I)):
         assessment, reason = 'quota_interrupted', 'quota_exhausted'

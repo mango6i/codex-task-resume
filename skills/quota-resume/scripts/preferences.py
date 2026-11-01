@@ -76,6 +76,7 @@ def update(state_path, patch, now=None):
             if 'monitoringEnabled' in patch:
                 was_enabled = s['enabled']
                 s['enabled'] = patch['monitoringEnabled']
+                s['monitoringRequested'] = patch['monitoringEnabled']
                 if s['enabled'] and not was_enabled:
                     core.start_monitoring(s, now)
                 if s['enabled']:

@@ -102,7 +102,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
     stopping_activity = None
     with core.locked(path):
         s = core.load(path)
-        if not s['enabled'] or sid == s['controllerId']:
+        if sid == s['controllerId']:
             # The controller is already performing recovery. Its own prompt,
             # tools and Stop must never redirect it into another arm step.
             return None
@@ -138,6 +138,12 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                         item['status'] = 'user_paused'
         elif event_name != 'SessionStart':
             return None
+        if not s['enabled']:
+            # Keep only local lifecycle bookkeeping while off. No quota query,
+            # capture or arm. Stop/Interrupt tombstones prevent a delayed async
+            # callback from reviving a task when monitoring is enabled again.
+            core.atomic_write(path, s)
+            return None
         if event_name in {'Interrupt', 'SessionEnd'}:
             # Interrupt has a short host deadline. Persist the user's stop
             # before returning; never spend that deadline querying the network.
@@ -172,6 +178,7 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                 core.atomic_write(path, s)
                 return None
             if q['accountId'] != s['accountId']:
+                s.setdefault('monitoringRequested', s['enabled'])
                 s['enabled'] = False
                 core.event(s, now, 'account_changed')
                 core.atomic_write(path, s)
@@ -263,6 +270,9 @@ def handle(path, payload, usage_provider=read_usage, now=None):
                    'If timing is early, run arm-plan again for corrected arguments, update the SAME timer '
                    'and re-verify, with at most two corrections; preserve original dueAt. '
                    'On failure retain the queue and report incomplete scheduling once. '
+                   'If and only if native automation_update explicitly reports this exact timer ID does not exist, '
+                   'run state.py forget-missing-automation --id that-ID --confirmed-missing, then arm-plan '
+                   'and create the replacement once. Never do this for a timeout or ambiguous update result. '
                    'On success return immediately to the user task without routine quota commentary. '
                    'The eventual check must pause if no eligible captured quota-interrupted turn remains.')
         return {'hookSpecificOutput': {'hookEventName': event_name, 'additionalContext': context}}

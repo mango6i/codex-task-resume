@@ -41,24 +41,61 @@ class AccountBinding(unittest.TestCase):
         result = self.rebind()
         saved = core.load(self.path)
         self.assertEqual(saved['accountId'], 'new-account')
-        self.assertFalse(saved['enabled'])
-        self.assertEqual(saved['runtime'], {})
+        self.assertTrue(saved['enabled'])
+        self.assertTrue(saved['monitoringRequested'])
+        self.assertEqual(saved['runtime']['task']['turnId'], 'work-turn')
+        self.assertEqual(saved['runtime']['task']['seenAt'], 1000)
+        self.assertEqual(saved['runtime']['task']['accountId'], 'new-account')
         self.assertIsNone(saved['scheduledFor'])
         self.assertIsNone(saved['armRequest'])
-        for key in ['controllerId', 'settings', 'selection', 'excluded', 'automationId']:
+        for key in ['controllerId', 'settings', 'selection', 'excluded']:
             self.assertEqual(saved.get(key), self.saved.get(key))
+        self.assertIsNone(saved['automationId'])
+        self.assertEqual(saved['retiredAutomations'][0]['id'], 'owned-timer')
         for key in ['uncertain', 'sent']:
             self.assertEqual(saved['queue'][key], self.saved['queue'][key])
-        pending = next(v for k, v in saved['queue'].items() if k not in ['uncertain', 'sent'])
-        self.assertEqual(pending['status'], 'excluded')
-        self.assertEqual(pending['exclusionReason'], 'account_rebound')
+        old = next(v for v in saved['queue'].values() if v.get('exclusionReason') == 'account_rebound')
+        self.assertEqual(old['status'], 'excluded')
+        pending = [v for v in saved['queue'].values() if v['status'] == 'pending']
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]['accountId'], 'new-account')
+        self.assertEqual(pending[0]['resetAt'], 1100)
+        self.assertEqual(pending[0]['dueAt'], 1220)
         backups = list(self.path.parent.glob('state.before-account-rebind-*.json'))
         self.assertEqual(len(backups), 1)
         self.assertEqual(json.loads(backups[0].read_text(encoding='utf-8')), self.saved)
         self.assertTrue(result['changed'])
         self.assertFalse(result['sent'])
-        self.assertFalse(result['values']['monitoringEnabled'])
+        self.assertTrue(result['values']['monitoringEnabled'])
         self.assertEqual(saved['lastQuota']['accountId'], 'new-account')
+
+    def test_user_disabled_switch_stays_off_but_account_suspension_restores_intent(self):
+        self.saved.update(enabled=False, monitoringRequested=False)
+        core.atomic_write(self.path, self.saved)
+        self.assertFalse(self.rebind()['values']['monitoringEnabled'])
+        self.saved.pop('monitoringRequested')
+        self.saved['authorization'] = {'source': 'explicit settings switch'}
+        self.saved['events'].append({'type': 'account_changed', 'at': 1000})
+        core.atomic_write(self.path, self.saved)
+        self.assertTrue(self.rebind()['values']['monitoringEnabled'])
+
+    def test_binding_again_and_back_uses_each_accounts_fresh_reset(self):
+        self.usage['rateLimitsByLimitId']['codex']['primary']['resetsAt'] = 2000
+        self.rebind()
+        saved = core.load(self.path)
+        pending = next(v for v in saved['queue'].values() if v['status'] == 'pending')
+        self.assertEqual(pending['resetAt'], 2000)
+        self.assertEqual(pending['dueAt'], 2120)
+        self.usage['accountId'] = self.saved['accountId']
+        self.usage['rateLimitsByLimitId']['codex']['primary']['resetsAt'] = 3000
+        self.rebind()
+        saved = core.load(self.path)
+        pending = next(v for v in saved['queue'].values() if v['status'] == 'pending')
+        self.assertEqual(pending['resetAt'], 3000)
+        self.assertEqual(pending['dueAt'], 3120)
+        self.assertEqual(pending['accountId'], self.saved['accountId'])
+        self.assertEqual(saved['queue']['sent'], self.saved['queue']['sent'])
+        self.assertEqual(saved['queue']['uncertain'], self.saved['queue']['uncertain'])
 
     def test_same_account_click_preserves_monitor_and_does_not_create_a_backup(self):
         self.usage['accountId'] = self.saved['accountId']

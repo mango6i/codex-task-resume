@@ -105,6 +105,8 @@ def load(path):
         raise ValueError('Unsupported state version')
     if not isinstance(s.get('enabled'), bool):
         raise ValueError('Invalid saved monitoring switch; no action authorized')
+    if 'monitoringRequested' in s and not isinstance(s['monitoringRequested'], bool):
+        raise ValueError('Invalid saved monitoring preference; no action authorized')
     for key in ('accountId', 'controllerId'):
         if not isinstance(s.get(key), str) or not s[key].strip():
             raise ValueError('Invalid saved ownership; no action authorized')
@@ -219,12 +221,30 @@ def runtime_threads(s, now):
 def start_monitoring(s, now):
     """A new activation cannot replay work captured before it was enabled."""
     s['monitoringStartedAt'] = now
-    s['runtime'] = {}
+    # Lifecycle records remain bound to exact turns. Do not freshen their
+    # timestamps: only actual subsequent events can renew stale activity.
+    s.setdefault('runtime', {})
     s['scheduledFor'] = None
+    s['armRequest'] = None
     s['armLeaseUntil'] = s['nextArmAfter'] = 0
     for item in s['queue'].values():
         if item['status'] == 'pending':
             item.update(status='excluded', exclusionReason='previous_activation')
+
+
+def monitoring_requested(s):
+    """Account suspension is separate from the user's saved monitoring switch."""
+    if isinstance(s.get('monitoringRequested'), bool):
+        return s['monitoringRequested']
+    if s['enabled']:
+        return True
+    # Migrate legacy account-change suspensions without undoing a later user stop.
+    for entry in reversed(s.get('events', [])):
+        if entry.get('type') == 'account_changed':
+            return bool(s.get('authorization'))
+        if entry.get('type') in {'disabled', 'settings_saved', 'account_rebound'}:
+            return False
+    return False
 
 
 def expire(s, now):
@@ -243,6 +263,7 @@ def observe(s, obs, now, *, capture=True):
     q, threads = validate_observation(obs, s, now)
     q = canonical_quota(s, q)
     if q['accountId'] != s['accountId']:
+        s.setdefault('monitoringRequested', s['enabled'])
         s['enabled'] = False
         event(s, now, 'account_changed')
         return {'enabled': False, 'due': [], 'scheduleMode': 'disabled',
@@ -261,7 +282,16 @@ def observe(s, obs, now, *, capture=True):
                 continue
             if t.get('assessment') in {'completed', 'user_paused', 'awaiting_input'}:
                 continue
+            if any(item.get('threadId') == t['id'] and item.get('turnId') == t['turnId']
+                   and item.get('status') in {'sent', 'reserved', 'uncertain'} for item in s['queue'].values()):
+                continue
             key = q['key'] + ':' + t['id'] + ':' + t['turnId']
+            previous = s['queue'].get(key)
+            if (previous and previous.get('status') == 'excluded'
+                    and previous.get('exclusionReason') == 'previous_activation'):
+                # A fresh active observation after explicit re-enablement is
+                # a new capture, not permission to replay the retired entry.
+                key += ':activation:' + str(s.get('monitoringStartedAt', now))
             if key not in s['queue']:
                 due = q['reset'] + settings['delaySeconds']
                 s['queue'][key] = {'threadId': t['id'], 'hostId': 'local',
@@ -359,6 +389,9 @@ def main():
     automation = subs.add_parser('set-automation')
     automation.add_argument('--id', required=True)
     automation.add_argument('--due-at', type=float, required=True)
+    missing = subs.add_parser('forget-missing-automation')
+    missing.add_argument('--id', required=True)
+    missing.add_argument('--confirmed-missing', action='store_true')
     exclude = subs.add_parser('exclude')
     exclude.add_argument('--thread', required=True)
     args = p.parse_args()
@@ -422,6 +455,7 @@ def main():
             if s['enabled'] and not previous_enabled:
                 start_monitoring(s, now)
             if s['enabled'] and not args.preserve_enabled_state:
+                s['monitoringRequested'] = True
                 s['authorization'] = {'at': now, 'scope': 'local active root codex chats at threshold',
                                       'messageConfiguredByUser': True}
             event(s, now, 'configured' if args.preserve_enabled_state else 'enabled')
@@ -450,6 +484,7 @@ def main():
                 result = {'request': recovery_schedule.request(s, path, now)}
             elif args.command == 'disable':
                 s['enabled'] = False
+                s['monitoringRequested'] = False
                 event(s, now, 'disabled')
                 result = {'enabled': False, 'automationId': s.get('automationId')}
             elif args.command == 'set-automation':
@@ -459,6 +494,16 @@ def main():
                 try:
                     timing = recovery_schedule.verify(s, args.id, args.due_at, now)
                 except ValueError as error:
+                    try:
+                        record = recovery_schedule.native_record(args.id)
+                    except ValueError:
+                        record = None
+                    if (record and record['kind'] == 'heartbeat'
+                            and record['target_thread_id'] == s['controllerId']):
+                        # A confirmed create can have an early native wake.
+                        # Keep its identity for correction without claiming a
+                        # successfully verified schedule or creating a duplicate.
+                        s['automationId'] = args.id
                     s['scheduleError'] = str(error)
                     s['armLeaseUntil'] = 0
                     s['nextArmAfter'] = now+60
@@ -473,6 +518,14 @@ def main():
                 s['armRequest'] = None
                 s['armLeaseUntil'] = 0
                 result = {'automationId': args.id, 'scheduledFor': args.due_at, **timing}
+            elif args.command == 'forget-missing-automation':
+                if not args.confirmed_missing or s.get('automationId') != args.id:
+                    raise ValueError('Exact native missing-timer confirmation is required')
+                s.setdefault('retiredAutomations', []).append({'id': args.id, 'accountId': s['accountId'],
+                    'controllerId': s['controllerId'], 'retiredAt': now, 'reason': 'native_not_found'})
+                s.update(automationId=None, scheduledFor=None, scheduleWakeAt=None, armRequest=None,
+                    armLeaseUntil=0, nextArmAfter=0, scheduleError=None)
+                result = {'forgottenMissingId': args.id, 'pendingCount': len(recovery_schedule.pending(s, now))}
             elif args.command in {'observe', 'reserve'}:
                 obs = read_json(args.input)
                 result = (reserve(s, obs, args.thread, args.window, now) if args.command == 'reserve'

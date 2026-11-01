@@ -1,4 +1,5 @@
-"""Explicit settings-button account migration. Never enables or sends work."""
+"""Explicit account migration; preserve the user's monitoring intent. Never sends."""
+import copy
 import os
 import stat
 import time
@@ -41,17 +42,48 @@ def rebind(path, confirmed, usage_provider=hook.read_usage, now=None):
                 stream.flush()
                 os.fsync(stream.fileno())
             old_account = s['accountId']
+            requested = core.monitoring_requested(s)
+            runtime = copy.deepcopy(s['runtime'])
+            for activity in runtime.values():
+                activity['accountId'] = quota['accountId']
+            if s.get('automationId'):
+                s.setdefault('retiredAutomations', []).append({'id': s['automationId'],
+                    'accountId': old_account, 'controllerId': s['controllerId'], 'retiredAt': now})
+            transferred = {}
+            scope = s.get('selection', {})
             for item in s['queue'].values():
                 if item.get('status') == 'pending':
+                    transferable = (item.get('capturePolicy') == 2 and item.get('turnId')
+                        and item.get('hostId') == 'local' and item.get('expiresAt', 0) >= now
+                        and item['threadId'] != s['controllerId'] and item['threadId'] not in s['excluded']
+                        and (scope.get('mode') != 'selected' or item['threadId'] in scope.get('threads', {}))
+                        and not any(other.get('status') in {'sent', 'reserved', 'uncertain'}
+                            and other.get('threadId') == item['threadId'] and other.get('turnId') == item['turnId']
+                            for other in s['queue'].values()))
+                    if transferable:
+                        carried = copy.deepcopy(item)
+                        due = quota['reset']+s['settings']['delaySeconds']
+                        carried.update(accountId=quota['accountId'], resetAt=quota['reset'], dueAt=due,
+                            windowKey=quota['key'], expiresAt=due+s['settings']['expiryHours']*3600,
+                            reboundAt=now, previousAccountId=old_account)
+                        key = quota['key']+':'+item['threadId']+':'+item['turnId']
+                        transferred[key] = carried
                     item.update(status='excluded', exclusionReason='account_rebound', accountId=old_account)
-            s.update(accountId=quota['accountId'], enabled=False, runtime={}, scheduledFor=None,
+            # Use a new key so terminal send records are never overwritten.
+            for key, carried in transferred.items():
+                if key in s['queue']:
+                    key += ':binding:'+uuid.uuid4().hex
+                s['queue'][key] = carried
+            s.update(accountId=quota['accountId'], enabled=requested, monitoringRequested=requested,
+                runtime=runtime, automationId=None, scheduledFor=None,
                 scheduleWakeAt=None, scheduleVerifiedAt=None, prearmResetAt=None, armRequest=None,
                 armLeaseUntil=0, nextArmAfter=0, scheduleError=None, probeToken=uuid.uuid4().hex,
                 probeLeaseUntil=0, lastProbeAt=now, lastProbeError=None,
                 lastQuota={**quota, 'observedAt': now}, lastLiveUsage=usage,
                 lastProbeSuccessAt=now, lastProbeSource='account_rebind', serviceHeartbeatAt=0)
             core.event(s, now, 'account_rebound', previousAccountId=old_account,
-                accountId=quota['accountId'], backup=backup.name, source='explicit account bind button')
+                accountId=quota['accountId'], backup=backup.name, transferredCount=len(transferred),
+                source='explicit account bind button')
             core.atomic_write(path, s)
     from local_catalog import monitor_state
     return {'changed': changed, 'values': preferences.values(path),

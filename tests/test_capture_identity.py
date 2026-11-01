@@ -79,14 +79,71 @@ class CaptureIdentity(unittest.TestCase):
             self.assertIn(str(reset), q['key'])
         self.assertNotEqual(*keys)
 
-    def test_new_activation_drops_old_runtime_and_pending_only(self):
+    def test_new_activation_retires_pending_without_refreshing_activity(self):
         s = self.captured()
         s['runtime'] = {'task': {'active': True}}
         s['queue']['sent'] = {'status': 'sent', 'token': 'kept'}
         core.start_monitoring(s, 1200)
-        self.assertEqual(s['runtime'], {})
+        self.assertEqual(s['runtime'], {'task': {'active': True}})
         self.assertEqual(s['queue']['sent']['token'], 'kept')
         self.assertFalse(core.observe(s, self.recovered(), 1220)['due'])
+
+    def test_reenable_can_recapture_same_live_turn_once_without_replaying_old_entry(self):
+        s = self.captured()
+        old = copy.deepcopy(s['queue'])
+        s['enabled'] = False
+        core.start_monitoring(s, 1005)
+        s['enabled'] = True
+        core.observe(s, observation(now=1006), 1006)
+        core.observe(s, observation(now=1007), 1007)
+        pending = [v for v in s['queue'].values() if v['status'] == 'pending']
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]['capturedAt'], 1006)
+        self.assertEqual(pending[0]['turnId'], 'work-turn')
+        for key in old:
+            self.assertEqual(s['queue'][key]['exclusionReason'], 'previous_activation')
+
+    def test_reactivation_never_recaptures_reserved_sent_or_uncertain_turns(self):
+        for outcome in ['reserved', 'sent', 'uncertain']:
+            s = self.captured()
+            item = next(iter(s['queue'].values()))
+            item['status'] = outcome
+            core.start_monitoring(s, 1005)
+            core.observe(s, observation(now=1006), 1006)
+            self.assertEqual(len(s['queue']), 1)
+            self.assertEqual(item['status'], outcome)
+
+    def test_disabled_stop_tombstone_cannot_be_revived_after_reenable(self):
+        path = self.with_state()
+        s = core.load(path)
+        s['enabled'] = False
+        core.atomic_write(path, s)
+        p = {'session_id': 'task', 'turn_id': 'work-turn', 'prompt': 'Continue project'}
+        provider = lambda: self.fail('No quota query while disabled')
+        hook.handle(path, {**p, 'hook_event_name': 'UserPromptSubmit'}, provider, 1000)
+        hook.handle(path, {**p, 'hook_event_name': 'Stop'}, provider, 1001)
+        s = core.load(path)
+        core.start_monitoring(s, 1002)
+        s['enabled'] = True
+        core.atomic_write(path, s)
+        hook.handle(path, {**p, 'hook_event_name': 'PostToolUse'}, provider, 1003)
+        self.assertFalse(core.load(path)['runtime']['task']['active'])
+        self.assertEqual(core.load(path)['queue'], {})
+
+    def test_enabling_during_a_live_turn_continues_event_tracking(self):
+        path = self.with_state()
+        s = core.load(path)
+        s['enabled'] = False
+        core.atomic_write(path, s)
+        p = {'session_id': 'task', 'turn_id': 'work-turn', 'prompt': 'Continue project'}
+        hook.handle(path, {**p, 'hook_event_name': 'UserPromptSubmit'},
+                    lambda: self.fail('No quota while disabled'), 990)
+        s = core.load(path)
+        core.start_monitoring(s, 999)
+        s['enabled'] = True
+        core.atomic_write(path, s)
+        hook.handle(path, {**p, 'hook_event_name': 'PostToolUse'}, lambda: observation()['usage'], 1000)
+        self.assertEqual(len([v for v in core.load(path)['queue'].values() if v['status'] == 'pending']), 1)
 
     def with_state(self):
         temp = tempfile.TemporaryDirectory()

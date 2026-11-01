@@ -202,6 +202,36 @@ class RecoverySchedule(unittest.TestCase):
         self.assertIn('paused',saved['scheduleError'])
         self.assertEqual(saved['armLeaseUntil'],0)
 
+    def test_new_timer_early_wake_preserves_its_id_for_correction(self):
+        self.s['automationId'] = None
+        core.atomic_write(self.path, self.s)
+        self.change(status='ACTIVE', next_run_at=1190000, next_run_nominal_at=1220000)
+        result = subprocess.run([sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'),
+            '--state', str(self.path), '--now', '1000', 'set-automation', '--id', 'existing', '--due-at', '1220'],
+            env={**os.environ, 'CODEX_HOME': self.temp.name}, capture_output=True, text=True, encoding='utf-8')
+        self.assertNotEqual(result.returncode, 0)
+        saved = core.load(self.path)
+        self.assertEqual(saved['automationId'], 'existing')
+        self.assertIsNone(saved.get('scheduledFor'))
+        self.assertEqual(timers.request(saved, self.path, 1000, self.db)['arguments']['mode'], 'update')
+        self.assertGreater(timers.request(saved, self.path, 1000, self.db)['nominalAt'], 1220)
+
+    def test_only_confirmed_missing_id_is_retired_without_dropping_candidates(self):
+        core.atomic_write(self.path, self.s)
+        base = [sys.executable, str(ROOT/'skills/quota-resume/scripts/state.py'), '--state', str(self.path),
+                '--now', '1000', 'forget-missing-automation']
+        original = self.path.read_bytes()
+        for extra in [['--id', 'existing'], ['--id', 'other', '--confirmed-missing']]:
+            r = subprocess.run(base+extra, capture_output=True)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertEqual(self.path.read_bytes(), original)
+        r = subprocess.run(base+['--id', 'existing', '--confirmed-missing'], capture_output=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        saved = core.load(self.path)
+        self.assertIsNone(saved['automationId'])
+        self.assertEqual(saved['queue'], self.s['queue'])
+        self.assertEqual(timers.request(saved, self.path, 1000, self.db)['arguments']['mode'], 'create')
+
     def test_subagent_events_never_arm_root_timer(self):
         core.atomic_write(self.path,self.s)
         before = self.path.read_bytes()

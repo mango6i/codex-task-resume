@@ -40,6 +40,10 @@ class FastRecovery(unittest.TestCase):
         self.assertEqual(result['threadId'],'task')
         self.assertFalse(self.reserve()['accepted'])
 
+    def test_exact_workspace_credit_exhaustion_is_a_quota_failure(self):
+        self.payload['snapshot']['polls'][0]['latestTurn']['error']['message'] = 'Your workspace is out of credits. Add credits to continue.'
+        self.assertTrue(self.reserve()['accepted'])
+
     def test_completed_paused_waiting_active_and_changed_turns_never_send(self):
         for change in ['completed','final','paused','approval','active','superseded','other_error','archived','subagent']:
             with self.subTest(change=change):

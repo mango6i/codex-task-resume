@@ -15,7 +15,7 @@ Version **1.0 · Preview** · Author [果果](https://github.com/mango6i) · [MI
 
 ## Features
 
-- **Account binding button:** after changing accounts, click **Bind current account** beside **Refresh quota**. Settings and scope are preserved, old state is backed up, and old pending work is isolated. Explicitly enable monitoring afterward. Rebinding the same account does not change monitoring or records.
+- **Account binding button:** click **Bind current account** after a switch. Quota and pending reset times follow that signed-in account. Settings, scope and your monitoring preference are preserved; previous state is backed up and send records are retained. A task event establishes and verifies the native timer. Binding the same account again does not postpone recovery.
 
 - **Global settings:** configure the threshold, reset delay and multiline prompt in one place.
 - **Fast recovery:** query only recorded targets and native quota-failure flags without reading project history or scanning every chat. Completed tasks are skipped; exact saved prompts and persistent deduplication are preserved.

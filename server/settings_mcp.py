@@ -97,7 +97,7 @@ def tools():
          'annotations': {'readOnlyHint': True, 'openWorldHint': False},
          '_meta': {'ui': {'visibility': ['app', 'model']}}},
         {'name': 'account.rebind', 'title': '绑定当前登录账号',
-         'description': '仅由设置中的绑定按钮显式关联当前登录账号。备份旧状态、保留参数和选择，隔离旧候选，不开启监控或发送消息。',
+         'description': '仅由绑定按钮关联当前账号。按其刷新时间更新已记录候选，保留参数、选择和用户监控开关，备份旧状态，不发送消息。',
          'inputSchema': {'type': 'object', 'properties': {'confirmed': {'type': 'boolean', 'const': True}},
                          'required': ['confirmed'], 'additionalProperties': False},
          'annotations': {'readOnlyHint': False, 'idempotentHint': True, 'destructiveHint': False,
